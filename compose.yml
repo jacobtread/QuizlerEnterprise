@@ -1,22 +1,10 @@
 services:
-  tracing-ui:
-    image: quizler/tracing-ui
-    build:
-      context: services/tracing
-      dockerfile: query.Dockerfile
-    env_file: .env
-    ports: 
+  tracing:
+    image: jaegertracing/all-in-one
+    ports:
       - 16686:16686
-  tracing-collector:
-    image: quilzer/tracing-collector
-    build: 
-      context: services/tracing
-      dockerfile: collector.Dockerfile
-    env_file: .env
-    ports: 
       - 4317:4317
       - 4318:4318
-      - 14269:14269
   database: 
     image: quizler/database
     build: services/database
