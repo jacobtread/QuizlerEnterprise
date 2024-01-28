@@ -43,3 +43,31 @@ sea-orm = { version = "0.12", features = [
     "with-chrono",
     "with-json",
 ] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1" }
+
+# Future utilities
+futures = "0.3"
+
+# Time and date 
+chrono = "0.4"
+
+# JWT Tokens
+jsonwebtoken = "9"
+
+# HTTP Client 
+reqwest = { version = "0.11", features = ["json"] }
+
+# Emailing 
+lettre = { version = "0.11", features = ["tokio1-native-tls"] }
+
+# Password hashing
+argon2 = "0.5"
+
+# Templating
+sailfish = "0.8"
+
+# Validation
+validator = { version = "0.16", features = ["derive"] }

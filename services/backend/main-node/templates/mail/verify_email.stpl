@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<body style="background-color: #333333">
+    <h1 style="color: #FFFFFF; font-family: Arial, Helvetica, sans-serif">Verify Email Address</h1>
+    <p style="color: #AEAEAE; font-family: Arial, Helvetica, sans-serif">
+        Thank you for creating a new account at NAME. Click the link below to
+        verify that this email address belongs to your account.
+    </p>
+
+    <p style="color: #c07b7b; font-family: Arial, Helvetica, sans-serif">
+        If you did not create an account with us you can ignore this
+        message.
+    </p>
+
+    <a style="color: #FFFFFF; font-family: Arial, Helvetica, sans-serif; padding: 15px; display: inline-block; background-color: #222;"
+        href="<%= url %>">
+        Verify Account
+    </a>
+</body>
+
+</html>
