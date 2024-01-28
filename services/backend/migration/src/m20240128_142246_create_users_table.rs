@@ -18,8 +18,19 @@ impl MigrationTrait for Migration {
                             .auto_increment()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(User::Title).string().not_null())
-                    .col(ColumnDef::new(User::Text).string().not_null())
+                    .col(ColumnDef::new(User::ServiceId).string().not_null())
+                    .col(ColumnDef::new(User::Email).string().not_null())
+                    .col(ColumnDef::new(User::EmailVerifiedAt).date_time().null())
+                    .col(
+                        ColumnDef::new(User::Username)
+                            .string()
+                            .not_null()
+                            .unique_key(),
+                    )
+                    .col(ColumnDef::new(User::Password).string().not_null())
+                    .col(ColumnDef::new(User::Role).integer().not_null())
+                    .col(ColumnDef::new(User::CreatedAt).date_time().not_null())
+                    .col(ColumnDef::new(User::UpdatedAt).date_time().not_null())
                     .to_owned(),
             )
             .await
@@ -32,7 +43,6 @@ impl MigrationTrait for Migration {
     }
 }
 
-/// Learn more at https://docs.rs/sea-query#iden
 #[derive(Iden)]
 enum User {
     Table,
@@ -43,7 +53,16 @@ enum User {
     ServiceId,
     /// Email address of the user
     Email,
-
+    /// When the email was verified
+    EmailVerifiedAt,
+    /// The username of the user
+    Username,
+    /// The user password hash
+    Password,
+    /// User role, for additional permissions
+    Role,
+    /// When the user was created
     CreatedAt,
-    LastUpdated,
+    /// When the user was last updated
+    UpdatedAt,
 }
