@@ -1,0 +1,10 @@
+{
+    "Mail Server": {
+        "name": "Mail Server",
+        "host": "localhost",
+        "port": "1025",
+        "username": "user",
+        "password": "password",
+        "mechanism": "PLAIN"
+    }
+}
