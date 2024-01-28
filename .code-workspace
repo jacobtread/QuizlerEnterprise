@@ -1,0 +1,20 @@
+{
+    "folders": [
+        {
+            "name": "Backend Main Node",
+            "path": "services/backend/main-node",
+        },      
+        {
+            "name": "Backend Migrations",
+            "path": "services/backend/migration",
+        },
+        {
+            "name": "Frontend Hub",
+            "path": "services/frontend/hub",
+        },
+        {
+            "name": "Frontend Play",
+            "path": "services/frontend/play",
+        }
+    ]
+}

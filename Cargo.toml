@@ -1,0 +1,3 @@
+[workspace]
+members = ["./services/backend/main-node", "./services/backend/migration"]
+resolver = "2"
