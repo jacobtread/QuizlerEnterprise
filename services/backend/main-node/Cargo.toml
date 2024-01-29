@@ -4,6 +4,19 @@ version = "0.1.0"
 edition = "2021"
 authors = ["Jacobtread (jacobtread@gmail.com)"]
 
+
+[features]
+default = ["tracing-console"]
+# Tracing through OpenTelemetry
+tracing-opentelemetry = [
+    "dep:opentelemetry",
+    "dep:tracing-opentelemetry",
+    "dep:opentelemetry_sdk",
+    "dep:opentelemetry-otlp",
+]
+# Tracing through a console subscriber
+tracing-console = ["dep:console-subscriber"]
+
 [dependencies]
 tokio = { version = "1", features = ["full", "tracing"] }
 
@@ -12,11 +25,16 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 log-panics = { version = "2", features = ["with-backtrace"] }
 
+# Tracing Console
+console-subscriber = { version = "0.2", optional = true }
+
 # Tracing OpenTelemetry
-opentelemetry = "0.21.0"
-tracing-opentelemetry = "0.22.0"
-opentelemetry_sdk = { version = "0.21", features = ["rt-tokio"] }
-opentelemetry-otlp = { version = "0.14", features = [] }
+opentelemetry = { version = "0.21.0", optional = true }
+tracing-opentelemetry = { version = "0.22.0", optional = true }
+opentelemetry_sdk = { version = "0.21", features = [
+    "rt-tokio",
+], optional = true }
+opentelemetry-otlp = { version = "0.14", optional = true }
 
 # HTTP 
 axum = { version = "0.7", features = ["multipart", "ws"] }
