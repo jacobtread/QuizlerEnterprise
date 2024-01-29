@@ -2,8 +2,14 @@ use anyhow::{anyhow, Context};
 use opentelemetry::KeyValue;
 use opentelemetry_otlp::WithExportConfig;
 use opentelemetry_sdk::{trace, trace::BatchConfig, Resource};
+use tracing::{instrument::WithSubscriber, level_filters::LevelFilter};
 use tracing_opentelemetry::OpenTelemetryLayer;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use tracing_subscriber::{
+    filter::{Directive, EnvFilter},
+    layer::SubscriberExt,
+    util::SubscriberInitExt,
+    Layer,
+};
 
 const SERVICE_NAME: &str = "main-node";
 const TELEMETRY_COLLECTOR_ENDPOINT: &str = "TELEMETRY_COLLECTOR_ENDPOINT";
@@ -36,8 +42,11 @@ pub fn init_tracing() -> anyhow::Result<()> {
         .install_batch(opentelemetry_sdk::runtime::Tokio)
         .context("Creating OpenTelemetry config")?;
 
+    let filter = EnvFilter::from_default_env().add_directive(LevelFilter::WARN.into());
+
     tracing_subscriber::registry()
         .with(OpenTelemetryLayer::new(tracer))
+        .with(tracing_subscriber::fmt::layer().with_filter(filter))
         .try_init()?;
 
     Ok(())
