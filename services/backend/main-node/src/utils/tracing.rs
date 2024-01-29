@@ -2,14 +2,9 @@ use anyhow::{anyhow, Context};
 use opentelemetry::KeyValue;
 use opentelemetry_otlp::WithExportConfig;
 use opentelemetry_sdk::{trace, trace::BatchConfig, Resource};
-use tracing::{instrument::WithSubscriber, level_filters::LevelFilter};
+use tracing::level_filters::LevelFilter;
 use tracing_opentelemetry::OpenTelemetryLayer;
-use tracing_subscriber::{
-    filter::{Directive, EnvFilter},
-    layer::SubscriberExt,
-    util::SubscriberInitExt,
-    Layer,
-};
+use tracing_subscriber::{filter::EnvFilter, layer::SubscriberExt, util::SubscriberInitExt, Layer};
 
 const SERVICE_NAME: &str = "main-node";
 const TELEMETRY_COLLECTOR_ENDPOINT: &str = "TELEMETRY_COLLECTOR_ENDPOINT";

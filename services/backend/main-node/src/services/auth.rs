@@ -7,15 +7,16 @@ use anyhow::Context;
 use futures::{stream::FuturesUnordered, StreamExt};
 use moka::future::Cache;
 use openid::DiscoveredClient;
+use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter, IntoEnumIterator};
 use tracing::{debug, error};
 
-pub struct AuthenticationService {
+pub struct AuthService {
     providers: Cache<AuthProvider, Arc<DiscoveredClient>>,
 }
 
 /// Provider for authentication
-#[derive(Debug, Display, Clone, Copy, Hash, PartialEq, Eq, EnumIter)]
+#[derive(Debug, Display, Clone, Copy, Hash, PartialEq, Eq, EnumIter, Serialize, Deserialize)]
 pub enum AuthProvider {
     Google,
     Microsoft,
@@ -31,7 +32,7 @@ impl AuthProvider {
     }
 }
 
-impl AuthenticationService {
+impl AuthService {
     /// Creates the authentication service and initializes the
     /// providers in the background
     pub fn new() -> Arc<Self> {
