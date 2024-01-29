@@ -1,4 +1,4 @@
-use axum::{routing::get, Router};
+use axum::{routing::get, Extension, Router};
 use dotenvy::dotenv;
 use std::error::Error;
 use tower_http::{
@@ -8,6 +8,8 @@ use tower_http::{
 use tracing::{info, Level};
 
 pub mod database;
+pub mod http;
+pub mod services;
 pub mod utils;
 
 #[tokio::main]
@@ -16,6 +18,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     dotenv()?;
 
     utils::tracing::init_tracing()?;
+
+    let authentication = services::authentication::AuthenticationService::new();
 
     // build our application with a single route
     let app = Router::new()
@@ -35,7 +39,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
                         .level(Level::INFO)
                         .latency_unit(LatencyUnit::Micros),
                 ),
-        );
+        )
+        .layer(Extension(authentication));
 
     // run our app with hyper, listening globally on port 3000
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
