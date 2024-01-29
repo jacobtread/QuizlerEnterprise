@@ -65,3 +65,5 @@ sailfish = "0.8"
 
 # Validation
 validator = { version = "0.16", features = ["derive"] }
+
+async-trait = "0.1"

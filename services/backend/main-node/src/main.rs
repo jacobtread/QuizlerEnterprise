@@ -7,6 +7,7 @@ use tower_http::{
 };
 use tracing::{info, Level};
 
+pub mod database;
 pub mod utils;
 
 #[tokio::main]

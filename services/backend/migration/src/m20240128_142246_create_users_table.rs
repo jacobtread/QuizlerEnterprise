@@ -9,28 +9,27 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
-                    .table(User::Table)
+                    .table(Users::Table)
                     .if_not_exists()
                     .col(
-                        ColumnDef::new(User::Id)
+                        ColumnDef::new(Users::Id)
                             .integer()
                             .not_null()
                             .auto_increment()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(User::ServiceId).string().not_null())
-                    .col(ColumnDef::new(User::Email).string().not_null())
-                    .col(ColumnDef::new(User::EmailVerifiedAt).date_time().null())
+                    .col(ColumnDef::new(Users::Email).string().not_null())
+                    .col(ColumnDef::new(Users::EmailVerifiedAt).date_time().null())
                     .col(
-                        ColumnDef::new(User::Username)
+                        ColumnDef::new(Users::Username)
                             .string()
                             .not_null()
                             .unique_key(),
                     )
-                    .col(ColumnDef::new(User::Password).string().not_null())
-                    .col(ColumnDef::new(User::Role).integer().not_null())
-                    .col(ColumnDef::new(User::CreatedAt).date_time().not_null())
-                    .col(ColumnDef::new(User::UpdatedAt).date_time().not_null())
+                    .col(ColumnDef::new(Users::Password).string().null())
+                    .col(ColumnDef::new(Users::Role).integer().not_null())
+                    .col(ColumnDef::new(Users::CreatedAt).date_time().not_null())
+                    .col(ColumnDef::new(Users::UpdatedAt).date_time().not_null())
                     .to_owned(),
             )
             .await
@@ -38,19 +37,16 @@ impl MigrationTrait for Migration {
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
-            .drop_table(Table::drop().table(User::Table).to_owned())
+            .drop_table(Table::drop().table(Users::Table).to_owned())
             .await
     }
 }
 
 #[derive(Iden)]
-enum User {
+enum Users {
     Table,
     /// Unique ID for the user
     Id,
-    /// String encoded ID with additional information about the service
-    /// that created the user if one was used
-    ServiceId,
     /// Email address of the user
     Email,
     /// When the email was verified
