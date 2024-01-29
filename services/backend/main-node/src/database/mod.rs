@@ -1,2 +1,5 @@
+use sea_orm::DbErr;
+
 pub mod entities;
-pub mod repositories;
+
+pub type DbResult<T> = Result<T, DbErr>;

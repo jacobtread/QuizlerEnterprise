@@ -1,5 +1,13 @@
+use crate::database::DbResult;
 use chrono::Utc;
+use sea_orm::IntoActiveModel;
 use sea_orm::{entity::prelude::*, ActiveValue};
+use sea_orm::{ActiveModelTrait, ActiveValue::Set, ConnectionTrait};
+use std::future::Future;
+
+pub type User = Model;
+pub type UserEntity = Entity;
+pub type UserActiveModel = ActiveModel;
 
 /// Database structure for a user
 #[derive(Debug, Clone, PartialEq, DeriveEntityModel)]
@@ -37,6 +45,13 @@ pub enum UserRole {
     Administrator,
 }
 
+#[derive(DeriveIntoActiveModel)]
+pub struct CreateUser {
+    pub email: String,
+    pub username: String,
+    pub password: Option<String>,
+}
+
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {}
 
@@ -58,5 +73,26 @@ impl ActiveModelBehavior for ActiveModel {
         }
 
         Ok(self)
+    }
+}
+
+impl Model {
+    /// Create a new user
+    fn create<C>(db: &C, create: CreateUser) -> impl Future<Output = DbResult<User>> + '_
+    where
+        C: ConnectionTrait,
+    {
+        create.into_active_model().insert(db)
+    }
+
+    /// Sets the email for the provided user to verified at the
+    /// current time
+    fn set_email_verified<C>(self, db: &C) -> impl Future<Output = DbResult<User>> + '_
+    where
+        C: ConnectionTrait,
+    {
+        let mut model = self.into_active_model();
+        model.email_verified_at = Set(Some(Utc::now()));
+        model.update(db)
     }
 }

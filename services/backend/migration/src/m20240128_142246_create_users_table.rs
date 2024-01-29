@@ -27,7 +27,7 @@ impl MigrationTrait for Migration {
                             .unique_key(),
                     )
                     .col(ColumnDef::new(Users::Password).string().null())
-                    .col(ColumnDef::new(Users::Role).integer().not_null())
+                    .col(ColumnDef::new(Users::Role).integer().default(0).not_null())
                     .col(ColumnDef::new(Users::CreatedAt).date_time().not_null())
                     .col(ColumnDef::new(Users::UpdatedAt).date_time().not_null())
                     .to_owned(),
