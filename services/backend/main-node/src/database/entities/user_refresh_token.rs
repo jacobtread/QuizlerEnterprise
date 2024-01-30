@@ -1,27 +1,26 @@
 use crate::database::DbResult;
-use crate::services::auth::AuthProvider;
 use chrono::Utc;
-use sea_orm::IntoActiveModel;
 use sea_orm::{entity::prelude::*, ActiveValue};
 use sea_orm::{ActiveModelTrait, ActiveValue::Set, ConnectionTrait};
 use std::future::Future;
 
 use super::user::{User, UserId};
 
-pub type UserLink = Model;
-pub type UserLinkEntity = Entity;
-pub type UserLinkActiveModel = ActiveModel;
+pub type UserRefreshToken = Model;
+pub type UserRefreshTokenEntity = Entity;
+pub type UserRefreshTokenActiveModel = ActiveModel;
 
 /// Database structure for a user
 #[derive(Debug, Clone, PartialEq, DeriveEntityModel)]
-#[sea_orm(table_name = "user_links")]
+#[sea_orm(table_name = "user_refresh_tokens")]
 pub struct Model {
-    /// Unique ID for the user
-    #[sea_orm(primary_key)]
+    /// The ID of the user the token belongs to
+    #[sea_orm(unique)]
     pub user_id: UserId,
+    /// The refresh token itself
     #[sea_orm(primary_key)]
-    pub provider: AuthProvider,
-    /// When this user was created
+    pub refresh_token: String,
+    /// When this refresh token was created
     pub created_at: DateTimeUtc,
 }
 
@@ -55,36 +54,32 @@ impl ActiveModelBehavior for ActiveModel {
 }
 
 impl Model {
-    /// Create a new user
+    /// Create a new refresh token for the provided `user`
     pub fn create<'db, C>(
         db: &'db C,
         user: &User,
-        provider: AuthProvider,
-    ) -> impl Future<Output = DbResult<UserLink>> + 'db
+        refresh_token: String,
+    ) -> impl Future<Output = DbResult<UserRefreshToken>> + 'db
     where
         C: ConnectionTrait,
     {
         ActiveModel {
             user_id: Set(user.id),
-            provider: Set(provider),
+            refresh_token: Set(refresh_token),
             ..Default::default()
         }
         .insert(db)
     }
 
-    /// Finds a link to the provided `provider` for the provided `user`
-    /// if one exists
-    pub fn find_by_user<'db, C>(
+    /// Find a refresh token by token
+    pub fn find_by_token<'db, C>(
         db: &'db C,
-        user: &User,
-        provider: AuthProvider,
-    ) -> impl Future<Output = DbResult<Option<UserLink>>> + 'db
+        refresh_token: &str,
+    ) -> impl Future<Output = DbResult<Option<UserRefreshToken>>> + 'db
     where
         C: ConnectionTrait,
     {
-        user.find_related(Entity)
-            .filter(Column::Provider.eq(provider))
-            .one(db)
+        Entity::find_by_id(refresh_token).one(db)
     }
 }
 

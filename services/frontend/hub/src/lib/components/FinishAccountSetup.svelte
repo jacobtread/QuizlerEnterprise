@@ -1,9 +1,9 @@
 <!-- Screen for completing the account creation process of an OpenID account -->
 <script lang="ts">
 	import { goto } from "$app/navigation";
-	import { openIdCreate, type OIDCreateResponse, type OIDData } from "$lib/api/auth";
+	import { openIdCreate, type TokenResponse, type OIDData } from "$lib/api/auth";
 	import { getErrorMessage } from "$lib/error";
-	import { setAuthToken } from "$lib/stores/auth";
+	import { setTokenData } from "$lib/stores/auth";
 	import Loader from "./Loader.svelte";
 
 	export let openIDData: OIDData;
@@ -20,9 +20,9 @@
 		error = null;
 
 		try {
-			const result: OIDCreateResponse = await openIdCreate(openIDData, username, password);
+			const result: TokenResponse = await openIdCreate(openIDData, username, password);
 
-			setAuthToken(result.token);
+			setTokenData(result);
 			goto("/dashboard");
 		} catch (e) {
 			error = getErrorMessage(e);

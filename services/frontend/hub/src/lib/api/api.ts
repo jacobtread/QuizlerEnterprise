@@ -1,5 +1,4 @@
-import { tokenStore } from "$lib/stores/auth";
-import { get } from "svelte/store";
+import { tokenData } from "$lib/stores/auth";
 import { PUBLIC_API_BASE_URL } from "$env/static/public"
 
 // Http request method types
@@ -49,11 +48,11 @@ export async function makeRequest<T>(config: RequestConfig): Promise<T> {
     const init: RequestInit = { method: config.method };
     const headers: Record<string, string> = config.headers ?? {};
 
-    const token = get(tokenStore);
+    const token = tokenData;
 
     // Apply the token if provided
     if (token) {
-        headers["Authorization"] = "Bearer " + token;
+        headers["Authorization"] = "Bearer " + token.token;
     }
 
     // Serialize JSON body if provided

@@ -3,11 +3,17 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use validator::Validate;
 
-use crate::services::auth::AuthProvider;
+use crate::services::auth::{AuthProvider, UserTokenData};
 
 use super::error::HttpErrorResponse;
 
-pub type AuthToken = String;
+#[derive(Debug, Error)]
+pub enum AuthError {
+    #[error("Failed to create token, try logging in again")]
+    FailedTokenIssue,
+}
+
+impl HttpErrorResponse for AuthError {}
 
 #[derive(Debug, Error)]
 pub enum OIDError {
@@ -30,6 +36,8 @@ pub enum OIDError {
     /// Account already exists
     #[error("An account with a matching email already exists")]
     AlreadyExists,
+    #[error("Account does not exist, please register")]
+    MissingAccount,
 }
 
 impl HttpErrorResponse for OIDError {}
@@ -43,6 +51,13 @@ pub struct OIDConfirmRequest {
     pub token: IdToken<StandardClaims>,
 }
 
+/// Request to refresh a token
+#[derive(Deserialize)]
+pub struct RefreshTokenRequest {
+    /// The token itself
+    pub refresh_token: String,
+}
+
 /// Response from handling an OpenID token with a specific provider
 #[derive(Serialize)]
 #[serde(tag = "type")]
@@ -53,12 +68,9 @@ pub enum OIDConfirmResponse {
         default_username: Option<String>,
     },
 
-    /// An account already exists and is setup with the provided auth
-    /// provider so a auth token is provided instead
-    Existing {
-        /// The auth token to log the user in with
-        token: AuthToken,
-    },
+    /// An account already exists and is linked to the provided
+    /// auth provider, should attempt a login instead of register
+    Existing,
 }
 
 /// Request for creating an account from an OpenID token
@@ -84,9 +96,10 @@ pub struct OIDCreateRequest {
     pub password: String,
 }
 
-/// Response for after an account is created with an OpenID token
+/// Response containing an authorization token
 #[derive(Serialize)]
-pub struct OIDCreateResponse {
+pub struct TokenResponse {
     /// The auth token to log the user in with
-    pub token: AuthToken,
+    #[serde(flatten)]
+    pub user_token_data: UserTokenData,
 }

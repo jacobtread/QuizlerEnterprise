@@ -6,7 +6,7 @@
 		AuthProvider,
 		openIdConfirm
 	} from "$lib/api/auth";
-	import { setAuthToken } from "$lib/stores/auth";
+	import { setTokenData } from "$lib/stores/auth";
 	import Loader from "$lib/components/Loader.svelte";
 	import FinishAccountSetup from "$lib/components/FinishAccountSetup.svelte";
 	import Captcha from "$lib/components/Captcha.svelte";
@@ -61,7 +61,7 @@
 				// Existing account automatic login
 				case "Existing":
 					// Account already exists
-					setAuthToken(response.token);
+					setTokenData(response.token);
 					goto("/dashboard");
 					break;
 			}

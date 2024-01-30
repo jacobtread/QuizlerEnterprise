@@ -9,13 +9,15 @@ pub type User = Model;
 pub type UserEntity = Entity;
 pub type UserActiveModel = ActiveModel;
 
+pub type UserId = u32;
+
 /// Database structure for a user
 #[derive(Debug, Clone, PartialEq, DeriveEntityModel)]
 #[sea_orm(table_name = "users")]
 pub struct Model {
     /// Unique ID for the user
     #[sea_orm(primary_key)]
-    pub id: u32,
+    pub id: UserId,
     /// Email address for the user
     #[sea_orm(unique)]
     pub email: String,
@@ -56,6 +58,8 @@ pub struct CreateUser {
 pub enum Relation {
     #[sea_orm(has_many = "super::user_link::Entity")]
     UserLinks,
+    #[sea_orm(has_one = "super::user_refresh_token::Entity")]
+    RefreshToken,
 }
 
 #[async_trait::async_trait]
@@ -91,6 +95,17 @@ impl Model {
         create.into_active_model().insert(db)
     }
 
+    /// Finds a user by its ID
+    pub fn find_by_id<'db, C>(
+        db: &'db C,
+        id: UserId,
+    ) -> impl Future<Output = DbResult<Option<User>>> + 'db
+    where
+        C: ConnectionTrait,
+    {
+        Entity::find_by_id(id).one(db)
+    }
+
     /// Finds a user by email if a matching email exists
     pub fn find_by_email<'db, C>(
         db: &'db C,
@@ -120,5 +135,11 @@ impl Model {
 impl Related<super::user_link::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::UserLinks.def()
+    }
+}
+
+impl Related<super::user_refresh_token::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::RefreshToken.def()
     }
 }

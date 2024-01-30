@@ -1,16 +1,14 @@
-use std::sync::Arc;
-
-use anyhow::anyhow;
-use axum::{routing::post, Extension, Json, Router};
-use openid::{DiscoveredClient, IdToken, StandardClaims};
-use sea_orm::{DatabaseConnection, DbErr, TransactionTrait};
-use tracing::error;
-
 use crate::database::entities::user::{CreateUser, User};
 use crate::database::entities::user_link::UserLink;
 use crate::http::models::{auth::*, error::HttpResult};
 use crate::services::auth::AuthService;
 use crate::utils::hashing::hash_password;
+use anyhow::anyhow;
+use axum::{routing::post, Extension, Json, Router};
+use openid::{DiscoveredClient, IdToken, StandardClaims};
+use sea_orm::{DatabaseConnection, DbErr, TransactionTrait};
+use std::sync::Arc;
+use tracing::error;
 
 /// Defines the routes under the route group of /auth
 pub fn routes() -> Router {
@@ -20,8 +18,35 @@ pub fn routes() -> Router {
             "/oid",
             Router::new()
                 // Confirm OpenID token
-                .route("/confirm", post(openid_confirm)),
+                .route("/confirm", post(openid_confirm))
+                .route("/create", post(openid_create))
+                .route("/login", post(openid_login)),
         )
+        // Token routes
+        .nest(
+            "token",
+            Router::new().route("/refresh", post(refresh_token)),
+        )
+}
+
+/// POST /auth/token/refresh
+///
+/// Requests a refresh of a token using a provided refresh token
+async fn refresh_token(
+    Extension(auth): Extension<Arc<AuthService>>,
+    Extension(db): Extension<DatabaseConnection>,
+    Json(req): Json<RefreshTokenRequest>,
+) -> HttpResult<Json<TokenResponse>> {
+    let user_token_data = match auth.refresh_user_token(&db, &req.refresh_token).await {
+        Ok(value) => value,
+        Err(err) => {
+            error!(name: "err_refresh_token", error = %err, "Failed to refresh user token");
+
+            return Err(AuthError::FailedTokenIssue.into());
+        }
+    };
+
+    Ok(Json(TokenResponse { user_token_data }))
 }
 
 /// Decodes the provided `token` returning either the claims present
@@ -71,17 +96,11 @@ async fn openid_confirm(
 
     if let Some(existing) = existing {
         // Find an existing link
-        let link = UserLink::find_by_user(&db, &existing, req.provider).await?;
+        let _ = UserLink::find_by_user(&db, &existing, req.provider)
+            .await?
+            .ok_or(OIDError::NotLinked)?;
 
-        // Error if the accounts aren't linked
-        if link.is_none() {
-            return Err(OIDError::NotLinked.into());
-        }
-
-        // Create an auth token
-        let token = auth.create_user_token(&existing);
-
-        return Ok(Json(OIDConfirmResponse::Existing { token }));
+        return Ok(Json(OIDConfirmResponse::Existing));
     }
 
     Ok(Json(OIDConfirmResponse::Success {
@@ -96,7 +115,7 @@ async fn openid_create(
     Extension(auth): Extension<Arc<AuthService>>,
     Extension(db): Extension<DatabaseConnection>,
     Json(req): Json<OIDCreateRequest>,
-) -> HttpResult<Json<OIDCreateResponse>> {
+) -> HttpResult<Json<TokenResponse>> {
     let client = auth
         .get_provider(req.provider)
         .await
@@ -138,7 +157,56 @@ async fn openid_create(
         })
         .await?;
 
-    let token = auth.create_user_token(&user);
+    let user_token_data = match auth.create_user_token(&db, &user).await {
+        Ok(value) => value,
+        Err(err) => {
+            error!(name: "err_issue_token", error = %err, "Failed to issue user token");
 
-    Ok(Json(OIDCreateResponse { token }))
+            return Err(AuthError::FailedTokenIssue.into());
+        }
+    };
+
+    Ok(Json(TokenResponse { user_token_data }))
+}
+
+/// POST /auth/oid/login
+///
+/// Logs into an account using an OpenID token
+async fn openid_login(
+    Extension(auth): Extension<Arc<AuthService>>,
+    Extension(db): Extension<DatabaseConnection>,
+    Json(req): Json<OIDConfirmRequest>,
+) -> HttpResult<Json<TokenResponse>> {
+    let client = auth
+        .get_provider(req.provider)
+        .await
+        .ok_or(OIDError::ProviderUnavailable)?;
+
+    // Decode the token claim
+    let claims = decode_openid_token(&client, req.token)?;
+
+    // Obtain the email address from user info
+    let email = claims.userinfo.email.ok_or(OIDError::ClaimMissingEmail)?;
+
+    // Find the user associated to the email
+    let user = User::find_by_email(&db, &email)
+        .await?
+        .ok_or(OIDError::MissingAccount)?;
+
+    // Find an existing link
+    let _ = UserLink::find_by_user(&db, &user, req.provider)
+        .await?
+        .ok_or(OIDError::NotLinked)?;
+
+    // Create an auth token
+    let user_token_data = match auth.create_user_token(&db, &user).await {
+        Ok(value) => value,
+        Err(err) => {
+            error!(name: "err_issue_token", error = %err, "Failed to issue user token");
+
+            return Err(AuthError::FailedTokenIssue.into());
+        }
+    };
+
+    Ok(Json(TokenResponse { user_token_data }))
 }

@@ -1,23 +1,25 @@
-import { get, writable, type Writable } from "svelte/store";
-import { getUser as getUserAPI, TokenReason, type User } from "$lib/api/user";
+import { writable, type Writable } from "svelte/store";
+import { getUser as getUserAPI, type User } from "$lib/api/user";
 import type { RequestError } from "$lib/api/api";
-import { goto } from "$app/navigation";
+import { refreshToken, type TokenResponse } from "$lib/api/auth";
 export type Token = string | null;
 
-// Store for storing the current token value
-export const tokenStore: Writable<Token> = writable(null);
+export let tokenData: TokenData | null = null;
+let tokenRefreshTask: number | null = null;
 
-// Store for storing the token loading state
-export const tokenLoading: Writable<boolean> = writable(false);
+export interface TokenData {
+    token: string;
+    refresh_token: string;
+    expiry: number;
+}
 
 // Local storage key for the token value
-const TOKEN_STORAGE_KEY: string = "token";
+const REFRESH_TOKEN_STORAGE_KEY: string = "quizler_refresh_token";
 
 export const user: Writable<User> = writable(null!);
 
 export async function loadUser(): Promise<boolean> {
-    const token: Token = get(tokenStore);
-    if (!token) return false;
+    if (tokenData === null) return false;
 
     let value: User;
     try {
@@ -45,8 +47,8 @@ export async function loadUser(): Promise<boolean> {
 
 export function clearAuthToken() {
     user.set(null!); /* Reset the stored user when the token changes */
-    tokenStore.set(null);
-    localStorage.removeItem(TOKEN_STORAGE_KEY);
+    tokenData = null;
+    localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
 }
 
 /**
@@ -55,10 +57,47 @@ export function clearAuthToken() {
  * 
  * @param value The token value
  */
-export function setAuthToken(value: string) {
-    user.set(null!); /* Reset the stored user when the token changes */
-    tokenStore.set(value);
-    localStorage.setItem(TOKEN_STORAGE_KEY, value);
+export function setTokenData(value: TokenResponse) {
+    // Reset the stored user when the token changes 
+    user.set(null!);
+    tokenData = value;
+
+    // Time in seconds to refresh early by
+    const EARLY_REFRESH_DELAY_SECONDS = 30;
+
+    // Determine when to refresh the token (Refresh early)
+    const timestamp: number = Date.now();
+    const refreshDelay: number = (value.expiry - timestamp) - EARLY_REFRESH_DELAY_SECONDS;
+
+    // Cancel pending token refreshes
+    if (tokenRefreshTask !== null) {
+        clearTimeout(tokenRefreshTask);
+    }
+
+    // Queue the next token refresh
+    tokenRefreshTask = setTimeout(() => {
+        // Can't refresh without a refresh token
+        if (tokenData === null) return;
+        doTokenRefresh(tokenData.refresh_token);
+    }, refreshDelay);
+
+    localStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, value.refresh_token);
+}
+
+/**
+ * Handles refreshing the token using the provided
+ * refresh token
+ * 
+ * @param token The refresh token
+ */
+async function doTokenRefresh(token: string) {
+    try {
+        const response = await refreshToken(token);
+        setTokenData(response);
+    } catch (e) {
+        clearAuthToken();
+        console.error("Failed to refresh token", e);
+    }
 }
 
 /**
@@ -66,16 +105,15 @@ export function setAuthToken(value: string) {
  * the related state
  */
 export function loadAuthToken() {
-    const token: Token = localStorage.getItem(TOKEN_STORAGE_KEY);
+    const refreshToken: Token = localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY);
     // Ignore the token if its not set
-    if (token == null) {
+    if (refreshToken == null) {
         return;
     }
 
-    console.debug("Loaded localStorage token", token);
-    // Set the token state
-    tokenStore.set(token)
-    user.set(null!); /* Reset the stored user when the token changes */
+    console.debug("Loaded localStorage refresh token", refreshToken);
+
+    doTokenRefresh(refreshToken);
 }
 
 // Load the auth token

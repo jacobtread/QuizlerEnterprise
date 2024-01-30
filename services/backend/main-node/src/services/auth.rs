@@ -1,19 +1,24 @@
 //! This service is responsible for authentication with external services such as
 //! Google, Microsoft, ..etc
 
-use std::{sync::Arc, time::Duration};
-
+use crate::database::entities::{user::User, user_refresh_token::UserRefreshToken};
 use anyhow::Context;
+use chrono::{Duration, Utc};
 use futures::{stream::FuturesUnordered, StreamExt};
 use jsonwebtoken::{DecodingKey, EncodingKey, Header};
 use moka::future::Cache;
 use openid::DiscoveredClient;
-use sea_orm::DeriveActiveEnum;
+use rand::{
+    distributions::{Alphanumeric, DistString},
+    rngs::StdRng,
+    SeedableRng,
+};
+use sea_orm::{ConnectionTrait, DbErr, DeriveActiveEnum};
 use serde::{Deserialize, Serialize};
+use std::{ops::Add, sync::Arc};
 use strum::Display;
+use thiserror::Error;
 use tracing::{debug, error};
-
-use crate::database::entities::user::User;
 
 pub struct AuthService {
     providers: Cache<AuthProvider, Arc<DiscoveredClient>>,
@@ -64,18 +69,43 @@ pub struct UserClaims {
     #[serde(rename = "sub")]
     pub user_id: u32,
     /// Expiry time UTC timestamp
-    exp: usize,
+    exp: i64,
 }
 
 const API_JWT_TOKEN_KEY: &str = "API_JWT_TOKEN_KEY";
 
+#[derive(Serialize)]
+pub struct UserTokenData {
+    /// The token itself
+    pub token: String,
+    /// The refresh token for refreshing this token
+    pub refresh_token: String,
+    /// UTC timestamp for when the token expires
+    pub expiry: i64,
+}
+
+#[derive(Debug, Error)]
+pub enum TokenError {
+    #[error(transparent)]
+    Database(#[from] DbErr),
+    #[error("Invalid refresh token")]
+    InvalidRefreshToken,
+    #[error("Failed to create token")]
+    CreateToken(#[from] jsonwebtoken::errors::Error),
+}
+
 impl AuthService {
+    /// Tokens are short lived 30min tokens that get refreshed
+    const USER_TOKEN_EXPIRY_MINUTES: i64 = 30;
+    /// Length of refresh tokens
+    const REFRESH_TOKEN_LENGTH: usize = 128;
+
     /// Creates the authentication service and initializes the
     /// providers in the background
     pub fn new() -> Arc<Self> {
         let providers = Cache::builder()
             // Refresh providers every 24 hours
-            .time_to_live(Duration::from_secs(60 * 60 * 24))
+            .time_to_live(std::time::Duration::from_secs(60 * 60 * 24))
             .initial_capacity(2)
             .build();
 
@@ -104,12 +134,80 @@ impl AuthService {
     }
 
     /// Creates a JWT token for the user
-    pub fn create_user_token(&self, user: &User) -> String {
-        jsonwebtoken::encode(&self.jwt_header, &UserClaims {
-            user_id: user.id,
-        }, key)
+    pub async fn create_user_token<C>(
+        &self,
+        db: &C,
+        user: &User,
+    ) -> Result<UserTokenData, TokenError>
+    where
+        C: ConnectionTrait,
+    {
+        let expiry = Utc::now()
+            .add(Duration::minutes(Self::USER_TOKEN_EXPIRY_MINUTES))
+            .timestamp();
 
-        todo!("Create user token")
+        // Create the user token
+        let token = jsonwebtoken::encode(
+            &self.jwt_header,
+            &UserClaims {
+                user_id: user.id,
+                exp: expiry,
+            },
+            &self.encoding_key,
+        )?;
+
+        // Create a refresh token
+        let refresh_token = Self::create_refresh_token(db, user).await?;
+
+        Ok(UserTokenData {
+            token,
+            refresh_token,
+            expiry,
+        })
+    }
+
+    /// Refreshes a user token using the provided `refresh_token`
+    pub async fn refresh_user_token<C>(
+        &self,
+        db: &C,
+        refresh_token: &str,
+    ) -> Result<UserTokenData, TokenError>
+    where
+        C: ConnectionTrait,
+    {
+        // Find the token data
+        let token = UserRefreshToken::find_by_token(db, refresh_token)
+            .await?
+            .ok_or(TokenError::InvalidRefreshToken)?;
+
+        // Find the user to refresh the token for
+        let user_id = token.user_id;
+        let user = User::find_by_id(db, user_id)
+            .await?
+            .ok_or(TokenError::InvalidRefreshToken)?;
+
+        // Create the new token and refresh token
+        self.create_user_token(db, &user).await
+    }
+
+    /// Creates a unique refresh token for the provided `user`
+    async fn create_refresh_token<C>(db: &C, user: &User) -> Result<String, TokenError>
+    where
+        C: ConnectionTrait,
+    {
+        let mut rng = StdRng::from_entropy();
+
+        loop {
+            let token = Alphanumeric.sample_string(&mut rng, Self::REFRESH_TOKEN_LENGTH);
+
+            // Check the token isn't already in use
+            if UserRefreshToken::find_by_token(db, &token).await?.is_none() {
+                // Create the token
+                let token = UserRefreshToken::create(db, user, token).await?;
+
+                return Ok(token.refresh_token);
+            }
+        }
     }
 
     pub fn verify_user_token(&self, token: &str) {

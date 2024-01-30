@@ -91,3 +91,5 @@ moka = { version = "0.12", features = ["future"] }
 openid = "0.12"
 
 strum = { version = "0.26", features = ["derive"] }
+
+rand = "0.8"
