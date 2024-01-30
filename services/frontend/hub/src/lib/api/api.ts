@@ -23,7 +23,7 @@ interface RequestConfig {
 
 
 // Error for server response errors
-class ServerResponseError extends Error {
+export class ServerResponseError extends Error {
     // The response status code
     status: number;
 
@@ -48,11 +48,10 @@ export async function makeRequest<T>(config: RequestConfig): Promise<T> {
     const init: RequestInit = { method: config.method };
     const headers: Record<string, string> = config.headers ?? {};
 
-    const token = tokenData;
 
     // Apply the token if provided
-    if (token) {
-        headers["Authorization"] = "Bearer " + token.token;
+    if (tokenData !== null) {
+        headers["Authorization"] = "Bearer " + tokenData.token;
     }
 
     // Serialize JSON body if provided

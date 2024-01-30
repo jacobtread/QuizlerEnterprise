@@ -1,11 +1,13 @@
 import { writable, type Writable } from "svelte/store";
 import { getSelfUser as getUserAPI, type User } from "$lib/api/user";
-import type { RequestError } from "$lib/api/api";
+import { ServerResponseError } from "$lib/api/api";
 import { refreshToken, type TokenResponse } from "$lib/api/auth";
+import { getErrorMessage } from "$lib/error";
 export type Token = string | null;
 
 export let tokenData: TokenData | null = null;
 let tokenRefreshTask: number | null = null;
+let refreshPromise: Promise<void> | null = null;
 
 export interface TokenData {
     token: string;
@@ -18,28 +20,40 @@ const REFRESH_TOKEN_STORAGE_KEY: string = "quizler_refresh_token";
 
 export const user: Writable<User> = writable(null!);
 
-export async function loadUser(): Promise<boolean> {
-    if (tokenData === null) return false;
+export async function loadUser(): Promise<User | null> {
+    // Wait for any token refreshes to finish
+    if (refreshPromise !== null) {
+        await refreshPromise;
+    }
+
+    if (tokenData === null) return null;
+
+    console.log(tokenData);
 
     let value: User;
     try {
         value = await getUserAPI();
     } catch (e) {
-        const err = e as RequestError;
-        switch (err[0]) {
-            case 500:
-                console.error("Server error occurred while attempting to authenticate", err[1]);
-                break;
-            case 401:
-                console.error("Stored token is no longer valid", err[1]);
-                clearAuthToken();
-                break;
+        const message: string = getErrorMessage(e);
+        console.error("Failed to fetch current user", message);
+
+        if (e instanceof ServerResponseError) {
+            switch (e.status) {
+                case 500:
+                    console.error("Server error occurred while attempting to authenticate");
+                    break;
+                case 401:
+                    console.error("Stored token is no longer valid");
+                    clearAuthToken();
+                    break;
+            }
         }
 
-        return false;
+        return null;
     }
+
     user.set(value);
-    return true;
+    return value;
 }
 
 
@@ -111,7 +125,7 @@ export function loadAuthToken() {
 
     console.debug("Loaded localStorage refresh token", refreshToken);
 
-    doTokenRefresh(refreshToken);
+    refreshPromise = doTokenRefresh(refreshToken);
 }
 
 // Load the auth token

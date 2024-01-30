@@ -39,7 +39,7 @@ export interface OIDData {
 export function refreshToken(refreshToken: string): Promise<TokenResponse> {
     return makeRequest({
         method: "POST",
-        url: "/auth/oid/confirm",
+        url: "/auth/token/refresh",
         body: { refresh_token: refreshToken }
     })
 }

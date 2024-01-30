@@ -5,28 +5,21 @@
 	import { onMount } from "svelte";
 	import Loader from "./Loader.svelte";
 
-	const enum State {
-		Loading = 0,
-		Loaded = 1
-	}
-
-	let state = State.Loading;
+	let loading = true;
 
 	onMount(async () => {
-		state = State.Loading;
+		loading = true;
+		const activeUser = await loadUser();
+		loading = false;
 
-		let loaded = await loadUser();
-
-		if (!loaded) {
-			goto("/auth/login");
-		} else {
-			state = State.Loaded;
+		if (activeUser == null) {
+			await goto("/auth/login");
 		}
 	});
 </script>
 
-{#if state === State.Loading}
-	<Loader />
-{:else if state === State.Loaded && $user}
+{#if !loading && $user}
 	<slot />
+{:else}
+	<Loader />
 {/if}
