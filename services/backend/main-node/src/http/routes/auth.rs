@@ -127,6 +127,9 @@ async fn openid_create(
     // Obtain the email address from user info
     let email = claims.userinfo.email.ok_or(OIDError::ClaimMissingEmail)?;
 
+    // Check if they've verified the email
+    let email_verified = claims.userinfo.email_verified;
+
     // Ensure the user doesn't exist already
     if User::find_by_email(&db, &email).await?.is_some() {
         return Err(OIDError::AlreadyExists.into());
@@ -139,7 +142,7 @@ async fn openid_create(
         .transaction(move |db| {
             Box::pin(async move {
                 // Create the new user
-                let user = User::create(
+                let mut user = User::create(
                     db,
                     CreateUser {
                         email,
@@ -148,6 +151,11 @@ async fn openid_create(
                     },
                 )
                 .await?;
+
+                // Verify the email if the provider says its verified
+                if email_verified {
+                    user = user.set_email_verified(db).await?;
+                }
 
                 // Create a link for the provider to the user
                 _ = UserLink::create(db, &user, req.provider).await?;
