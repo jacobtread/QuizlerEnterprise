@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { PUBLIC_GOOGLE_OPENID_CLIENT_ID } from "$env/static/public";
 	import { AuthProvider } from "$lib/api/auth";
-	import Icon from "@iconify/svelte";
+	import GoogleIcon from "$lib/components/icons/GoogleIcon.svelte";
 
 	/**
 	 * Callback to provide the OpenID identity token and provider
@@ -55,7 +55,7 @@
 <div class="hidden" bind:this={googleButton} />
 
 <button on:click={doLogin} class="button">
-	<Icon icon="logos:google-icon" class="button__icon" />
+	<GoogleIcon class="button__icon" />
 	Sign-in with Google
 </button>
 
@@ -63,20 +63,17 @@
 	.button {
 		display: flex;
 		gap: 1rem;
-		padding: 1rem;
+		padding: 0.75rem 1rem;
 		border: 1px solid #ccc;
 		background-color: #f7f7f7;
 		border-radius: 0.2rem;
 		font-size: 1rem;
 		text-align: left;
+		width: 100%;
 		cursor: pointer;
 	}
 
 	.button__icon {
 		width: 4rem;
-	}
-
-	.hidden {
-		display: none;
 	}
 </style>

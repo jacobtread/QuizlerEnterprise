@@ -6,7 +6,7 @@
 		type AuthenticationResult,
 		type PopupRequest
 	} from "@azure/msal-browser";
-	import Icon from "@iconify/svelte";
+	import MicrosoftIcon from "$lib/components/icons/MicrosoftIcon.svelte";
 
 	/**
 	 * Callback to provide the OpenID identity token and provider
@@ -48,21 +48,22 @@
 </script>
 
 <button on:click={doLogin} class="button">
-	<Icon icon="logos:microsoft-icon" class="button__icon" />
-	Sign-in with
+	<MicrosoftIcon class="button__icon" />
+	Sign-in with Microsoft
 </button>
 
 <style lang="scss">
 	.button {
 		display: flex;
 		gap: 1rem;
-		padding: 1rem;
+		padding: 0.75rem 1rem;
 		border: 1px solid #ccc;
 		background-color: #f7f7f7;
 		border-radius: 0.2rem;
 		font-size: 1rem;
 		text-align: left;
 		cursor: pointer;
+		width: 100%;
 	}
 
 	.button__icon {

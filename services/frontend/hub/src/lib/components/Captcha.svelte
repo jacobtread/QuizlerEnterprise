@@ -26,8 +26,10 @@
 				// Expired callback to clear the reCaptcha token
 				"expired-callback": onCaptchaExpired,
 				theme: "dark",
-				size: "normal"
+				size: "invisible"
 			});
+
+			grecaptcha.execute();
 		});
 	}
 
@@ -62,19 +64,3 @@
 </svelte:head>
 
 <div class="captcha" bind:this={captchaContainer} class:captcha--hidden={hideCaptcha} />
-
-<style lang="scss">
-	.captcha {
-		display: flex;
-		margin-bottom: 0.5rem;
-		margin-top: 0.25rem;
-		transition: height 0.5s ease;
-		height: 80px;
-		overflow: hidden;
-
-		&--hidden {
-			margin-top: 0;
-			height: 0;
-		}
-	}
-</style>
