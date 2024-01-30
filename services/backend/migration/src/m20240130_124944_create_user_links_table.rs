@@ -22,7 +22,7 @@ impl MigrationTrait for Migration {
                             .col(UserLinks::UserId)
                             .col(UserLinks::Provider),
                     )
-                    .col(ColumnDef::new(UserLinks::UserId).unsigned().not_null())
+                    .col(ColumnDef::new(UserLinks::UserId).integer().not_null())
                     .col(ColumnDef::new(UserLinks::Provider).string().not_null())
                     .col(ColumnDef::new(UserLinks::CreatedAt).date_time().not_null())
                     // Cascade deletions from the users table onto this table

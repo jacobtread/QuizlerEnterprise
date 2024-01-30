@@ -23,7 +23,7 @@ impl MigrationTrait for Migration {
                     )
                     .col(
                         ColumnDef::new(UserRefreshTokens::UserId)
-                            .unsigned()
+                            .integer()
                             .not_null()
                             .unique_key(),
                     )
