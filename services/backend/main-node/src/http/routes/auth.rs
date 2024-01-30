@@ -24,7 +24,7 @@ pub fn routes() -> Router {
         )
         // Token routes
         .nest(
-            "token",
+            "/token",
             Router::new().route("/refresh", post(refresh_token)),
         )
 }

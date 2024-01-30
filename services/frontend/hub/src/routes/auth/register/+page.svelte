@@ -6,7 +6,6 @@
 		AuthProvider,
 		openIdConfirm
 	} from "$lib/api/auth";
-	import { setTokenData } from "$lib/stores/auth";
 	import Loader from "$lib/components/Loader.svelte";
 	import FinishAccountSetup from "$lib/components/FinishAccountSetup.svelte";
 	import Captcha from "$lib/components/Captcha.svelte";
@@ -61,8 +60,7 @@
 				// Existing account automatic login
 				case "Existing":
 					// Account already exists
-					setTokenData(response.token);
-					goto("/dashboard");
+					goto("/login");
 					break;
 			}
 		} catch (e) {
@@ -83,7 +81,7 @@
 				<p class="input-error">{error}</p>
 			{/if}
 
-			<Captcha bind:captchaToken />
+			<!-- <Captcha bind:captchaToken /> -->
 		</form>
 		<div>
 			<p>Or create an account with an alternative method below</p>

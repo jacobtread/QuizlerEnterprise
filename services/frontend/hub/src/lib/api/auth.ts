@@ -6,9 +6,7 @@ export type OIDConfirmResponse =
     {
         type: "Success",
         default_username: string | null,
-    }
-    | { type: "Existing", token: string }
-    | { type: "Conflict" };
+    } | { type: "Existing" };
 
 
 
