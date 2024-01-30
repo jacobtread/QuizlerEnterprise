@@ -1,5 +1,9 @@
-use axum::Router;
+use axum::{
+    http::{header, HeaderValue, Method},
+    Router,
+};
 use tower_http::{
+    cors::CorsLayer,
     trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer},
     LatencyUnit,
 };
@@ -10,6 +14,23 @@ mod user;
 
 /// Initializes the router and all routes in the app
 pub fn init_router() -> Router {
+    let hub_url = std::env::var("HUB_BASE_URL")
+        .expect("Missing HUB_BASE_URL")
+        .parse::<HeaderValue>()
+        .expect("Invalid HUB_BASE_URL");
+
+    let cors = CorsLayer::new()
+        .allow_methods([
+            Method::GET,
+            Method::POST,
+            Method::PUT,
+            Method::DELETE,
+            Method::PATCH,
+        ])
+        .allow_headers([header::AUTHORIZATION, header::CONTENT_TYPE])
+        .allow_credentials(true)
+        .allow_origin(hub_url);
+
     Router::new()
         .nest("/auth", auth::routes())
         .nest("/user", user::routes())
@@ -24,4 +45,5 @@ pub fn init_router() -> Router {
                         .latency_unit(LatencyUnit::Micros),
                 ),
         )
+        .layer(cors)
 }
