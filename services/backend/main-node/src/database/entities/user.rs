@@ -10,7 +10,7 @@ pub type User = Model;
 pub type UserEntity = Entity;
 pub type UserActiveModel = ActiveModel;
 
-pub type UserId = u32;
+pub type UserId = i32;
 
 /// Database structure for a user
 #[derive(Debug, Clone, PartialEq, DeriveEntityModel, Serialize)]
@@ -24,7 +24,7 @@ pub struct Model {
     #[sea_orm(unique)]
     pub email: String,
     /// When the email address was verified, if it was verified
-    pub email_verified_at: Option<DateTimeUtc>,
+    pub email_verified_at: Option<DateTime>,
     /// The account username
     pub username: String,
     /// The password associated with this account
@@ -33,9 +33,9 @@ pub struct Model {
     /// The role for this user
     pub role: UserRole,
     /// When this user was created
-    pub created_at: DateTimeUtc,
+    pub created_at: DateTime,
     /// When the last change was made to this user
-    pub updated_at: DateTimeUtc,
+    pub updated_at: DateTime,
 }
 
 #[derive(Debug, Clone, Default, EnumIter, PartialEq, DeriveActiveEnum, Serialize, Deserialize)]
@@ -75,7 +75,7 @@ impl ActiveModelBehavior for ActiveModel {
     where
         C: ConnectionTrait,
     {
-        let now = Utc::now();
+        let now = Utc::now().naive_utc();
         self.updated_at = ActiveValue::Set(now);
 
         if insert {
@@ -127,7 +127,7 @@ impl Model {
         C: ConnectionTrait,
     {
         let mut model = self.into_active_model();
-        model.email_verified_at = Set(Some(Utc::now()));
+        model.email_verified_at = Set(Some(Utc::now().naive_utc()));
         model.update(db)
     }
 }

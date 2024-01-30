@@ -8,12 +8,18 @@ use axum::{
 use sea_orm::{DbErr, TransactionError};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use tracing::error;
 use validator::ValidationError;
 
 pub type HttpResult<T> = Result<T, TypedError>;
 
 /// Trait implemented by HTTP error response types
 pub trait HttpErrorResponse: std::error::Error + Send + Sync + 'static {
+    /// Handles logging the error before its consumed
+    fn log(&self) {
+        error!(name: "err_http", error = %self);
+    }
+
     fn status_code(&self) -> StatusCode {
         StatusCode::INTERNAL_SERVER_ERROR
     }
@@ -105,9 +111,12 @@ impl IntoResponse for TypedError {
     fn into_response(self) -> Response {
         let status_code = self.status_code();
         let json = match self {
-            TypedError::General(err) => TypedErrorJson::General {
-                message: err.message(),
-            },
+            TypedError::General(err) => {
+                err.log();
+                TypedErrorJson::General {
+                    message: err.message(),
+                }
+            }
             TypedError::Validation(err) => TypedErrorJson::Validation(err),
         };
         (status_code, Json(json)).into_response()

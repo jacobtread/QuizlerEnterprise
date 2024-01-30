@@ -21,7 +21,7 @@ pub struct Model {
     #[sea_orm(primary_key)]
     pub refresh_token: String,
     /// When this refresh token was created
-    pub created_at: DateTimeUtc,
+    pub created_at: DateTime,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -44,7 +44,7 @@ impl ActiveModelBehavior for ActiveModel {
     where
         C: ConnectionTrait,
     {
-        let now = Utc::now();
+        let now = Utc::now().naive_utc();
         if insert {
             self.created_at = ActiveValue::Set(now);
         }

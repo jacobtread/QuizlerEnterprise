@@ -1,9 +1,8 @@
 use crate::database::DbResult;
 use crate::services::auth::AuthProvider;
 use chrono::Utc;
-use sea_orm::IntoActiveModel;
-use sea_orm::{entity::prelude::*, ActiveValue};
-use sea_orm::{ActiveModelTrait, ActiveValue::Set, ConnectionTrait};
+use sea_orm::entity::prelude::*;
+use sea_orm::{ActiveValue::Set, ConnectionTrait};
 use std::future::Future;
 
 use super::user::{User, UserId};
@@ -22,7 +21,7 @@ pub struct Model {
     #[sea_orm(primary_key)]
     pub provider: AuthProvider,
     /// When this user was created
-    pub created_at: DateTimeUtc,
+    pub created_at: DateTime,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -35,41 +34,24 @@ pub enum Relation {
     User,
 }
 
-#[async_trait::async_trait]
-impl ActiveModelBehavior for ActiveModel {
-    /// Handles updating the `updated_at` field before the model is saved, using
-    /// the current date time.
-    ///
-    /// If the save is an insertion the `created_at` field will also be updated
-    async fn before_save<C>(mut self, _db: &C, insert: bool) -> Result<Self, DbErr>
-    where
-        C: ConnectionTrait,
-    {
-        let now = Utc::now();
-        if insert {
-            self.created_at = ActiveValue::Set(now);
-        }
-
-        Ok(self)
-    }
-}
+impl ActiveModelBehavior for ActiveModel {}
 
 impl Model {
-    /// Create a new user
+    /// Create a new user link
     pub fn create<'db, C>(
         db: &'db C,
         user: &User,
         provider: AuthProvider,
-    ) -> impl Future<Output = DbResult<UserLink>> + 'db
+    ) -> impl Future<Output = DbResult<u64>> + 'db
     where
         C: ConnectionTrait,
     {
-        ActiveModel {
+        Entity::insert(ActiveModel {
             user_id: Set(user.id),
             provider: Set(provider),
-            ..Default::default()
-        }
-        .insert(db)
+            created_at: Set(Utc::now().naive_utc()),
+        })
+        .exec_without_returning(db)
     }
 
     /// Finds a link to the provided `provider` for the provided `user`

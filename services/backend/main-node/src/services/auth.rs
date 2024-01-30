@@ -1,7 +1,10 @@
 //! This service is responsible for authentication with external services such as
 //! Google, Microsoft, ..etc
 
-use crate::database::entities::{user::User, user_refresh_token::UserRefreshToken};
+use crate::database::entities::{
+    user::{User, UserId},
+    user_refresh_token::UserRefreshToken,
+};
 use anyhow::Context;
 use chrono::{Duration, Utc};
 use futures::{stream::FuturesUnordered, StreamExt};
@@ -69,7 +72,7 @@ impl AuthProvider {
 pub struct UserClaims {
     /// ID of the user this claim represents
     #[serde(rename = "sub")]
-    pub user_id: u32,
+    pub user_id: UserId,
     /// Expiry time UTC timestamp
     exp: i64,
 }
