@@ -36,8 +36,6 @@ export async function loadUser(): Promise<boolean> {
                 break;
         }
 
-
-
         return false;
     }
     user.set(value);

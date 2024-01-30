@@ -1,16 +1,12 @@
 <script lang="ts">
 	import GoogleAuthButton from "$lib/components/GoogleAuthButton.svelte";
-	import {
-		type OIDData,
-		type OIDConfirmResponse,
-		AuthProvider,
-		openIdConfirm
-	} from "$lib/api/auth";
+	import { type OIDData, AuthProvider, openIdLogin, type TokenResponse } from "$lib/api/auth";
 	import Loader from "$lib/components/Loader.svelte";
 	import FinishAccountSetup from "$lib/components/FinishAccountSetup.svelte";
 	import Captcha from "$lib/components/Captcha.svelte";
 	import { goto } from "$app/navigation";
 	import { getErrorMessage } from "$lib/error";
+	import { setTokenData } from "$lib/stores/auth";
 
 	function onFormSubmit() {}
 
@@ -47,22 +43,11 @@
 		loading = true;
 
 		try {
-			const response: OIDConfirmResponse = await openIdConfirm({
+			const response: TokenResponse = await openIdLogin({
 				token: openIDData.token,
 				provider: openIDData.provider
 			});
-			switch (response.type) {
-				// Finish account creation
-				case "Success":
-					defaultUsername = response.default_username ?? "";
-					openIDData.verified = true;
-					break;
-				// Existing account automatic login
-				case "Existing":
-					// Account already exists
-					goto("/auth/login");
-					break;
-			}
+			setTokenData(response);
 		} catch (e) {
 			error = getErrorMessage(e);
 		} finally {
@@ -74,8 +59,8 @@
 {#if openIDData == null}
 	<div>
 		<form on:submit|preventDefault={onFormSubmit}>
-			<h1>Register</h1>
-			<p>Enter your details below to create a new account</p>
+			<h1>Login</h1>
+			<p>Enter your details below</p>
 
 			{#if error}
 				<p class="input-error">{error}</p>
@@ -84,7 +69,7 @@
 			<!-- <Captcha bind:captchaToken /> -->
 		</form>
 		<div>
-			<p>Or create an account with an alternative method below</p>
+			<p>Or login with an alternative method below</p>
 			<ul>
 				<li>
 					<GoogleAuthButton {onGoogleIdentify} />

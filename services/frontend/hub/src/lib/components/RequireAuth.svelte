@@ -18,7 +18,7 @@
 		let loaded = await loadUser();
 
 		if (!loaded) {
-			goto("/auth");
+			goto("/auth/login");
 		} else {
 			state = State.Loaded;
 		}
