@@ -1,8 +1,13 @@
 <script lang="ts">
 	import { PUBLIC_GOOGLE_OPENID_CLIENT_ID } from "$env/static/public";
+	import { AuthProvider } from "$lib/api/auth";
 	import Icon from "@iconify/svelte";
 
-	export let onGoogleIdentify: (response: google.accounts.id.CredentialResponse) => Promise<void>;
+	/**
+	 * Callback to provide the OpenID identity token and provider
+	 * type to the outer component
+	 */
+	export let onIdentify: (token: string, provider: AuthProvider) => Promise<void>;
 
 	// HTML parent for the google button to render within
 	let googleButton: HTMLDivElement;
@@ -15,7 +20,10 @@
 		// Initialize Google ID context
 		google.accounts.id.initialize({
 			client_id: PUBLIC_GOOGLE_OPENID_CLIENT_ID,
-			callback: onGoogleIdentify
+			callback: (response: google.accounts.id.CredentialResponse) => {
+				console.debug("Authenticated with Google");
+				onIdentify(response.credential, AuthProvider.Google);
+			}
 		});
 
 		// Render google auth button
@@ -48,7 +56,7 @@
 
 <button on:click={doLogin} class="button">
 	<Icon icon="logos:google-icon" class="button__icon" />
-	Login With Google
+	Sign-in with Google
 </button>
 
 <style lang="scss">

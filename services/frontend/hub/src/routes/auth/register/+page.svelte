@@ -12,7 +12,6 @@
 	import { goto } from "$app/navigation";
 	import { getErrorMessage } from "$lib/error";
 	import MicrosoftAuthButton from "$lib/components/MicrosoftAuthButton.svelte";
-	import type { AuthenticationResult } from "@azure/msal-browser";
 
 	function onFormSubmit() {}
 
@@ -26,45 +25,20 @@
 	// reCaptcha token
 	let captchaToken: string | null = null;
 
-	/**
-	 * Handles the completion of authentication with Google OpenID
-	 */
-	async function onGoogleIdentify(response: google.accounts.id.CredentialResponse) {
-		const token = response.credential;
-		console.debug("Authenticated with Google OpenID", token);
-
+	async function onIdentify(token: string, provider: AuthProvider) {
 		openIDData = {
 			token,
-			provider: AuthProvider.Google,
+			provider,
 			verified: false
 		};
-
-		await verifyOpenId();
-	}
-
-	async function onMicrosoftIdentify(response: AuthenticationResult) {
-		const token = response.idToken;
-		console.debug("Authenticated with Microsoft OpenID", token);
-
-		openIDData = {
-			token,
-			provider: AuthProvider.Microsoft,
-			verified: false
-		};
-
-		await verifyOpenId();
-	}
-
-	async function verifyOpenId() {
-		if (openIDData == null) return;
 
 		error = null;
 		loading = true;
 
 		try {
 			const response: OIDConfirmResponse = await openIdConfirm({
-				token: openIDData.token,
-				provider: openIDData.provider
+				token,
+				provider
 			});
 			switch (response.type) {
 				// Finish account creation
@@ -102,10 +76,10 @@
 			<p>Or create an account with an alternative method below</p>
 			<ul>
 				<li>
-					<GoogleAuthButton {onGoogleIdentify} />
+					<GoogleAuthButton {onIdentify} />
 				</li>
 				<li>
-					<MicrosoftAuthButton {onMicrosoftIdentify} />
+					<MicrosoftAuthButton {onIdentify} />
 				</li>
 			</ul>
 		</div>
