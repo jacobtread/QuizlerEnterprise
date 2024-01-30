@@ -19,6 +19,10 @@ module.exports = {
 		es2017: true,
 		node: true
 	},
+	globals: {
+		"google": "readable",
+		"grecaptcha": "readable"
+	},
 	overrides: [
 		{
 			files: ['*.svelte'],

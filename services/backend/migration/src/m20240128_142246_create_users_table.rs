@@ -1,3 +1,5 @@
+//! Migration for creating the `users` table to store users
+
 use sea_orm_migration::prelude::*;
 
 #[derive(DeriveMigrationName)]
@@ -13,12 +15,17 @@ impl MigrationTrait for Migration {
                     .if_not_exists()
                     .col(
                         ColumnDef::new(Users::Id)
-                            .integer()
+                            .unsigned()
                             .not_null()
                             .auto_increment()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(Users::Email).string().not_null())
+                    .col(
+                        ColumnDef::new(Users::Email)
+                            .string()
+                            .unique_key()
+                            .not_null(),
+                    )
                     .col(ColumnDef::new(Users::EmailVerifiedAt).date_time().null())
                     .col(
                         ColumnDef::new(Users::Username)
@@ -26,7 +33,7 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .unique_key(),
                     )
-                    .col(ColumnDef::new(Users::Password).string().null())
+                    .col(ColumnDef::new(Users::Password).string().not_null())
                     .col(ColumnDef::new(Users::Role).integer().default(0).not_null())
                     .col(ColumnDef::new(Users::CreatedAt).date_time().not_null())
                     .col(ColumnDef::new(Users::UpdatedAt).date_time().not_null())
@@ -43,7 +50,7 @@ impl MigrationTrait for Migration {
 }
 
 #[derive(Iden)]
-enum Users {
+pub enum Users {
     Table,
     /// Unique ID for the user
     Id,

@@ -49,11 +49,14 @@ pub enum UserRole {
 pub struct CreateUser {
     pub email: String,
     pub username: String,
-    pub password: Option<String>,
+    pub password: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {}
+pub enum Relation {
+    #[sea_orm(has_many = "super::user_link::Entity")]
+    UserLinks,
+}
 
 #[async_trait::async_trait]
 impl ActiveModelBehavior for ActiveModel {
@@ -78,21 +81,44 @@ impl ActiveModelBehavior for ActiveModel {
 
 impl Model {
     /// Create a new user
-    fn create<C>(db: &C, create: CreateUser) -> impl Future<Output = DbResult<User>> + '_
+    pub fn create<C>(db: &C, mut create: CreateUser) -> impl Future<Output = DbResult<User>> + '_
     where
         C: ConnectionTrait,
     {
+        // Ensure the email is in lowercase
+        create.email = create.email.to_lowercase();
+
         create.into_active_model().insert(db)
+    }
+
+    /// Finds a user by email if a matching email exists
+    pub fn find_by_email<'db, C>(
+        db: &'db C,
+        email: &str,
+    ) -> impl Future<Output = DbResult<Option<User>>> + 'db
+    where
+        C: ConnectionTrait,
+    {
+        // Ensure the email is in lowercase
+        let email = email.to_lowercase();
+
+        Entity::find().filter(Column::Email.eq(email)).one(db)
     }
 
     /// Sets the email for the provided user to verified at the
     /// current time
-    fn set_email_verified<C>(self, db: &C) -> impl Future<Output = DbResult<User>> + '_
+    pub fn set_email_verified<C>(self, db: &C) -> impl Future<Output = DbResult<User>> + '_
     where
         C: ConnectionTrait,
     {
         let mut model = self.into_active_model();
         model.email_verified_at = Set(Some(Utc::now()));
         model.update(db)
+    }
+}
+
+impl Related<super::user_link::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::UserLinks.def()
     }
 }

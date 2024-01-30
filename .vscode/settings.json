@@ -1,5 +1,8 @@
 {
     "cSpell.words": [
-        "reqwest"
+        "grecaptcha",
+        "jsonwebtoken",
+        "reqwest",
+        "userinfo"
     ]
 }
