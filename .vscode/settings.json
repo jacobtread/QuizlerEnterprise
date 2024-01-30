@@ -3,6 +3,7 @@
         "grecaptcha",
         "Iden",
         "jsonwebtoken",
+        "msal",
         "reqwest",
         "userinfo"
     ]

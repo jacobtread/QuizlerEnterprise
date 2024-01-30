@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { PUBLIC_GOOGLE_OPENID_CLIENT_ID } from "$env/static/public";
+	import Icon from "@iconify/svelte";
 
 	export let onGoogleIdentify: (response: google.accounts.id.CredentialResponse) => Promise<void>;
 
@@ -26,6 +27,10 @@
 			theme: "outline"
 		});
 	}
+
+	function doLogin() {
+		googleButton.click();
+	}
 </script>
 
 <!-- Include Google Client script -->
@@ -39,11 +44,31 @@
 	></script>
 </svelte:head>
 
-<div class="google" bind:this={googleButton} />
+<div class="hidden" bind:this={googleButton} />
+
+<button on:click={doLogin} class="button">
+	<Icon icon="logos:google-icon" class="button__icon" />
+	Login With Google
+</button>
 
 <style lang="scss">
-	.google {
-		margin-top: 0.5rem;
-		overflow: hidden;
+	.button {
+		display: flex;
+		gap: 1rem;
+		padding: 1rem;
+		border: 1px solid #ccc;
+		background-color: #f7f7f7;
+		border-radius: 0.2rem;
+		font-size: 1rem;
+		text-align: left;
+		cursor: pointer;
+	}
+
+	.button__icon {
+		width: 4rem;
+	}
+
+	.hidden {
+		display: none;
 	}
 </style>

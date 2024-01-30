@@ -7,6 +7,8 @@
 	import { goto } from "$app/navigation";
 	import { getErrorMessage } from "$lib/error";
 	import { setTokenData } from "$lib/stores/auth";
+	import MicrosoftAuthButton from "$lib/components/MicrosoftAuthButton.svelte";
+	import type { AuthenticationResult } from "@azure/msal-browser";
 
 	function onFormSubmit() {}
 
@@ -30,6 +32,19 @@
 		openIDData = {
 			token,
 			provider: AuthProvider.Google,
+			verified: false
+		};
+
+		await verifyOpenId();
+	}
+
+	async function onMicrosoftIdentify(response: AuthenticationResult) {
+		const token = response.idToken;
+		console.debug("Authenticated with Microsoft OpenID", token);
+
+		openIDData = {
+			token,
+			provider: AuthProvider.Microsoft,
 			verified: false
 		};
 
@@ -73,6 +88,9 @@
 			<ul>
 				<li>
 					<GoogleAuthButton {onGoogleIdentify} />
+				</li>
+				<li>
+					<MicrosoftAuthButton {onMicrosoftIdentify} />
 				</li>
 			</ul>
 		</div>
