@@ -6,11 +6,13 @@ use tower_http::{
 use tracing::Level;
 
 mod auth;
+mod user;
 
 /// Initializes the router and all routes in the app
 pub fn init_router() -> Router {
     Router::new()
         .nest("/auth", auth::routes())
+        .nest("/user", user::routes())
         // Request tracing
         .layer(
             TraceLayer::new_for_http()

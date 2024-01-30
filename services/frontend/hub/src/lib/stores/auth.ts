@@ -1,5 +1,5 @@
 import { writable, type Writable } from "svelte/store";
-import { getUser as getUserAPI, type User } from "$lib/api/user";
+import { getSelfUser as getUserAPI, type User } from "$lib/api/user";
 import type { RequestError } from "$lib/api/api";
 import { refreshToken, type TokenResponse } from "$lib/api/auth";
 export type Token = string | null;

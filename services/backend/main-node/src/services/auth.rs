@@ -5,7 +5,7 @@ use crate::database::entities::{user::User, user_refresh_token::UserRefreshToken
 use anyhow::Context;
 use chrono::{Duration, Utc};
 use futures::{stream::FuturesUnordered, StreamExt};
-use jsonwebtoken::{DecodingKey, EncodingKey, Header};
+use jsonwebtoken::{decode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use moka::future::Cache;
 use openid::DiscoveredClient;
 use rand::{
@@ -23,8 +23,10 @@ use tracing::{debug, error};
 pub struct AuthService {
     providers: Cache<AuthProvider, Arc<DiscoveredClient>>,
 
-    /// Header for jwt tokens
+    /// Header for JWT tokens
     jwt_header: Header,
+    /// Validation for JWT tokens
+    jwt_validation: Validation,
     /// Key for encoding JWT tokens
     encoding_key: EncodingKey,
     /// Key for decoding JWT tokens
@@ -90,6 +92,8 @@ pub enum TokenError {
     Database(#[from] DbErr),
     #[error("Invalid refresh token")]
     InvalidRefreshToken,
+    #[error("Invalid token")]
+    InvalidToken,
     #[error("Failed to create token")]
     CreateToken(#[from] jsonwebtoken::errors::Error),
 }
@@ -114,13 +118,15 @@ impl AuthService {
         let key_bytes = key.as_bytes();
         let encoding_key = EncodingKey::from_secret(key_bytes);
         let decoding_key = DecodingKey::from_secret(key_bytes);
-        let jwt_header = Header::new(jsonwebtoken::Algorithm::HS256);
+        let jwt_header = Header::new(Algorithm::HS256);
+        let jwt_validation = Validation::new(Algorithm::HS256);
 
         let service = Arc::new(Self {
             providers,
             encoding_key,
             decoding_key,
             jwt_header,
+            jwt_validation,
         });
 
         let init_service = service.clone();
@@ -210,8 +216,12 @@ impl AuthService {
         }
     }
 
-    pub fn verify_user_token(&self, token: &str) {
-        todo!("Verify user token")
+    /// Verifies the provided user token returning the associated user
+    pub fn verify_user_token(&self, token: &str) -> Result<UserClaims, TokenError> {
+        let token_data: jsonwebtoken::TokenData<UserClaims> =
+            decode(token, &self.decoding_key, &self.jwt_validation)
+                .map_err(|_| TokenError::InvalidToken)?;
+        Ok(token_data.claims)
     }
 
     /// Initializes all the auth providers in this service
@@ -221,7 +231,7 @@ impl AuthService {
             .map(|provider| self.get_provider(provider))
             .collect::<FuturesUnordered<_>>();
 
-        while let Some(_) = futures.next().await {}
+        while futures.next().await.is_some() {}
     }
 
     /// Attempts to get the specified provider from the cache, will
@@ -235,7 +245,7 @@ impl AuthService {
             Ok(value) => Some(value),
             Err(err) => {
                 error!(name: "err_initialize_provider", error = %err, "Failed to initialize auth provider");
-                return None;
+                None
             }
         }
     }

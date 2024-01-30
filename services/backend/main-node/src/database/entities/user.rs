@@ -3,6 +3,7 @@ use chrono::Utc;
 use sea_orm::IntoActiveModel;
 use sea_orm::{entity::prelude::*, ActiveValue};
 use sea_orm::{ActiveModelTrait, ActiveValue::Set, ConnectionTrait};
+use serde::{Deserialize, Serialize};
 use std::future::Future;
 
 pub type User = Model;
@@ -12,11 +13,12 @@ pub type UserActiveModel = ActiveModel;
 pub type UserId = u32;
 
 /// Database structure for a user
-#[derive(Debug, Clone, PartialEq, DeriveEntityModel)]
+#[derive(Debug, Clone, PartialEq, DeriveEntityModel, Serialize)]
 #[sea_orm(table_name = "users")]
 pub struct Model {
     /// Unique ID for the user
     #[sea_orm(primary_key)]
+    #[serde(skip)]
     pub id: UserId,
     /// Email address for the user
     #[sea_orm(unique)]
@@ -26,6 +28,7 @@ pub struct Model {
     /// The account username
     pub username: String,
     /// The password associated with this account
+    #[serde(skip)]
     pub password: Option<String>,
     /// The role for this user
     pub role: UserRole,
@@ -35,7 +38,7 @@ pub struct Model {
     pub updated_at: DateTimeUtc,
 }
 
-#[derive(Debug, Clone, Default, EnumIter, PartialEq, DeriveActiveEnum)]
+#[derive(Debug, Clone, Default, EnumIter, PartialEq, DeriveActiveEnum, Serialize, Deserialize)]
 #[sea_orm(rs_type = "i32", db_type = "Integer")]
 pub enum UserRole {
     #[default]
@@ -96,10 +99,7 @@ impl Model {
     }
 
     /// Finds a user by its ID
-    pub fn find_by_id<'db, C>(
-        db: &'db C,
-        id: UserId,
-    ) -> impl Future<Output = DbResult<Option<User>>> + 'db
+    pub fn find_by_id<C>(db: &C, id: UserId) -> impl Future<Output = DbResult<Option<User>>> + '_
     where
         C: ConnectionTrait,
     {
