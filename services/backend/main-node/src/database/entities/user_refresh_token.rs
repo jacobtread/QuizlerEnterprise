@@ -1,5 +1,6 @@
 use crate::database::DbResult;
 use chrono::Utc;
+use sea_orm::sea_query::OnConflict;
 use sea_orm::{entity::prelude::*, ActiveValue};
 use sea_orm::{ActiveModelTrait, ActiveValue::Set, ConnectionTrait};
 use std::future::Future;
@@ -63,12 +64,17 @@ impl Model {
     where
         C: ConnectionTrait,
     {
-        ActiveModel {
+        Entity::insert(ActiveModel {
             user_id: Set(user.id),
             refresh_token: Set(refresh_token),
-            ..Default::default()
-        }
-        .insert(db)
+            created_at: Set(Utc::now().naive_utc()),
+        })
+        .on_conflict(
+            OnConflict::column(Column::UserId)
+                .update_columns([Column::RefreshToken, Column::CreatedAt])
+                .to_owned(),
+        )
+        .exec_with_returning(db)
     }
 
     /// Find a refresh token by token
