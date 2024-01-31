@@ -27,6 +27,12 @@ pub trait HttpErrorResponse: std::error::Error + Send + Sync + 'static {
     fn message(&self) -> String {
         self.to_string()
     }
+
+    /// Names for each of the error types, used for handling
+    /// specific errors on the client
+    fn name(&self) -> &'static str {
+        "server"
+    }
 }
 
 /// Type adapter that allows anyhow to meet the std::error::Error bounds
@@ -96,10 +102,12 @@ impl TypedError {
 
 /// Error context in a format that can be serialized as JSON
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(tag = "type")]
 pub enum TypedErrorJson {
     /// General generic error messages
     General {
+        /// The error name
+        name: &'static str,
         /// The error message
         message: String,
     },
@@ -114,6 +122,7 @@ impl IntoResponse for TypedError {
             TypedError::General(err) => {
                 err.log();
                 TypedErrorJson::General {
+                    name: err.name(),
                     message: err.message(),
                 }
             }

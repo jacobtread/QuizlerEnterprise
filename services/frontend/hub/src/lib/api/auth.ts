@@ -28,6 +28,19 @@ export interface OIDData {
     provider: AuthProvider,
 }
 
+export type OIDProviders = Partial<Record<AuthProvider, OIDProvider>>;
+
+export interface OIDProvidersResponse {
+    providers: OIDProviders;
+}
+
+export interface OIDProvider {
+    auth_url: string;
+}
+
+export type OIDAuthenticateResponse =
+    { type: "CreateAccount", token: string, default_username: string | null }
+    | { type: "ExistingLinked" } & TokenResponse
 
 /**
  * Requests a new authorization token using the provided 
@@ -45,25 +58,38 @@ export function refreshToken(refreshToken: string): Promise<TokenResponse> {
 }
 
 /**
- * Request confirmation of a successful OpenID login
+ * Request the available OpenID providers
  * 
- * @param token The token granted through OpenID
- * @param provider The auth provider the token is for
  * @returns The confirmation result
  */
-export function openIdConfirm(data: OIDData): Promise<OIDConfirmResponse> {
+export function openIdProviders(): Promise<OIDProvidersResponse> {
+    return makeRequest({
+        method: "GET",
+        url: "/auth/oid/providers",
+    })
+}
+
+/**
+ * Request confirmation of a successful OpenID login
+ * 
+ * @param data The OpenID token and provider
+ * @returns The confirmation result
+ */
+export function openIdAuthenticate(code: string, provider: AuthProvider): Promise<OIDAuthenticateResponse> {
     return makeRequest({
         method: "POST",
-        url: "/auth/oid/confirm",
-        body: data
+        url: "/auth/oid/authenticate",
+        body: {
+            code,
+            provider
+        }
     })
 }
 
 /**
  * Request to create an account using an OpenID auth token
  * 
- * @param token The token granted through OpenID
- * @param provider The auth provider the token is for
+ * @param data The OpenID token and provider
  * @param username The username to give the account
  * @param password The password to set for the account
  * @returns 
@@ -79,24 +105,3 @@ export function openIdCreate(
         body: { ...data, username, password }
     })
 }
-
-
-/**
- * Request to login to an account using an OpenID auth token
- * 
- * @param token The token granted through OpenID
- * @param provider The auth provider the token is for
- * @param username The username to give the account
- * @param password The password to set for the account
- * @returns 
- */
-export function openIdLogin(
-    data: OIDData,
-): Promise<TokenResponse> {
-    return makeRequest({
-        method: "POST",
-        url: "/auth/oid/login",
-        body: data
-    })
-}
-

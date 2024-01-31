@@ -33,6 +33,28 @@ export class ServerResponseError extends Error {
     }
 }
 
+export class GenericError extends ServerResponseError {
+    // The error name
+    name: string;
+
+    constructor(status: number, name: string, message: string, options?: ErrorOptions | undefined) {
+        super(status, message, options);
+        this.name = name;
+    }
+}
+
+// TODO: Store validation data
+export class ValidationError extends ServerResponseError {
+    constructor(status: number, options?: ErrorOptions | undefined) {
+        super(status, "Validation Failed", options);
+    }
+}
+
+
+type TypedErrorJson =
+    { type: "General", name: string, message: string }
+    | { type: "Validation", code: string, message: string | null, params: Partial<Record<string, unknown>> }
+    | { type: undefined }
 
 /**
  * Makes a request with the provided details
@@ -83,14 +105,37 @@ export async function makeRequest<T>(config: RequestConfig): Promise<T> {
         }
     }
 
-    // Handle non 200 status codes by taking the text response
-    let text: string;
+    // Handle error response
+    let responseText: string;
     try {
-        text = await response.text();
+        responseText = await response.text();
     } catch (e) {
-        console.error("Failed to get error response text", e);
+        console.error("Failed to get response text", e);
         throw new ServerResponseError(response.status, "Unknown error", { cause: e });
     }
 
-    throw new ServerResponseError(response.status, text);
+    let responseJson: TypedErrorJson;
+    try {
+        responseJson = JSON.parse(responseText);
+
+        if (responseJson.type === undefined) {
+            throw new ServerResponseError(response.status, "Unknown error");
+        }
+    } catch (e) {
+        if (e instanceof SyntaxError) {
+            // Handle non-JSON response types
+            throw new ServerResponseError(response.status, responseText);
+        } else {
+            throw new ServerResponseError(response.status, "Unknown error", { cause: e });
+        }
+    }
+
+    switch (responseJson.type) {
+        case "General":
+            throw new GenericError(response.status, responseJson.name, responseJson.message)
+        case "Validation":
+            throw new ValidationError(response.status)
+        default:
+            throw new ServerResponseError(response.status, "Unknown error");
+    }
 }

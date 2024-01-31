@@ -1,4 +1,8 @@
+use std::collections::HashMap;
+
+use axum::http::StatusCode;
 use openid::{IdToken, StandardClaims};
+use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use validator::Validate;
@@ -20,7 +24,7 @@ pub enum OIDError {
     /// Tried to login using a provider that isn't linked to an
     /// existing account
     #[error(
-        "An account already exists with the same email, please use the existing\
+        "An account already exists with the same email, please use the existing \
         account password. Once logged in you can link your account in settings"
     )]
     NotLinked,
@@ -29,18 +33,41 @@ pub enum OIDError {
     ProviderUnavailable,
     /// OpenID token is invalid
     #[error("Authentication token is invalid, try again.")]
-    Token,
+    InvalidToken,
+    /// Failed to authenticate with the provider
+    #[error("Failed to authenticate with OpenID provider")]
+    Authentication,
     /// Token claim was missing an email, OAuth is likely mis-configured
     #[error("Failed to determine account email address.")]
     ClaimMissingEmail,
     /// Account already exists
     #[error("An account with a matching email already exists")]
     AlreadyExists,
-    #[error("Account does not exist, please register")]
-    MissingAccount,
 }
 
-impl HttpErrorResponse for OIDError {}
+impl HttpErrorResponse for OIDError {
+    fn name(&self) -> &'static str {
+        match self {
+            OIDError::NotLinked => "oid:not_linked",
+            OIDError::ProviderUnavailable => "oid:provider_unavailable",
+            OIDError::InvalidToken => "oid:invalid_token",
+            OIDError::Authentication => "oid:auth_failed",
+            OIDError::ClaimMissingEmail => "oid:claim_missing_email",
+            OIDError::AlreadyExists => "oid:already_exists",
+        }
+    }
+
+    fn status_code(&self) -> axum::http::StatusCode {
+        match self {
+            OIDError::NotLinked => StatusCode::CONFLICT,
+            OIDError::ProviderUnavailable => StatusCode::INTERNAL_SERVER_ERROR,
+            OIDError::InvalidToken => StatusCode::BAD_REQUEST,
+            OIDError::Authentication => StatusCode::BAD_REQUEST,
+            OIDError::ClaimMissingEmail => StatusCode::BAD_REQUEST,
+            OIDError::AlreadyExists => StatusCode::CONFLICT,
+        }
+    }
+}
 
 /// Request to check an OpenID token with the provider
 #[derive(Deserialize)]
@@ -56,21 +83,6 @@ pub struct OIDConfirmRequest {
 pub struct RefreshTokenRequest {
     /// The token itself
     pub refresh_token: String,
-}
-
-/// Response from handling an OpenID token with a specific provider
-#[derive(Serialize)]
-#[serde(tag = "type")]
-pub enum OIDConfirmResponse {
-    /// The OpenID token was successfully confirmed
-    Success {
-        /// The default username based on the name present in the claim
-        default_username: Option<String>,
-    },
-
-    /// An account already exists and is linked to the provided
-    /// auth provider, should attempt a login instead of register
-    Existing,
 }
 
 /// Request for creating an account from an OpenID token
@@ -96,10 +108,43 @@ pub struct OIDCreateRequest {
     pub password: String,
 }
 
+/// Request to authenticate an OpenID code
+#[derive(Deserialize)]
+pub struct OIDAuthenticateRequest {
+    /// The provider the code is from
+    pub provider: AuthProvider,
+    /// The auth code
+    pub code: String,
+}
+
+#[derive(Serialize)]
+#[serde(tag = "type")]
+pub enum OIDAuthenticateResponse {
+    /// Account doesn't exist, prepare account creation
+    CreateAccount {
+        /// The auth token to authenticate with OpenID
+        token: Box<IdToken<StandardClaims>>,
+        /// The default username based on the name present in the claim
+        default_username: Option<String>,
+    },
+    /// Account exists and is linked to this method, logged in
+    ExistingLinked(TokenResponse),
+}
+
 /// Response containing an authorization token
 #[derive(Serialize)]
 pub struct TokenResponse {
     /// The auth token to log the user in with
     #[serde(flatten)]
     pub user_token_data: UserTokenData,
+}
+
+#[derive(Serialize)]
+pub struct OIDProvidersResponse {
+    pub providers: HashMap<AuthProvider, OIDProvider>,
+}
+
+#[derive(Serialize)]
+pub struct OIDProvider {
+    pub auth_url: Url,
 }

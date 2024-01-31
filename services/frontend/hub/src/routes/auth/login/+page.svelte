@@ -1,13 +1,13 @@
 <script lang="ts">
-	import { AuthProvider, openIdLogin, type TokenResponse } from "$lib/api/auth";
+	import { openIdProviders, type OIDProvidersResponse, AuthProvider } from "$lib/api/auth";
 	import Loader from "$lib/components/Loader.svelte";
 	import Captcha from "$lib/components/Captcha.svelte";
-	import { goto } from "$app/navigation";
-	import { getErrorMessage } from "$lib/error";
-	import { setTokenData } from "$lib/stores/auth";
-	import MicrosoftAuthButton from "$lib/components/auth/button/MicrosoftAuthButton.svelte";
-	import GoogleAuthButton from "$lib/components/auth/button/GoogleAuthButton.svelte";
+	import AuthProviderButton from "$lib/components/auth/AuthProviderButton.svelte";
 	import Logo from "$lib/components/icons/Logo.svelte";
+	import { onMount, type ComponentType } from "svelte";
+	import { base } from "$app/paths";
+	import GoogleIcon from "$lib/components/icons/GoogleIcon.svelte";
+	import MicrosoftIcon from "$lib/components/icons/MicrosoftIcon.svelte";
 
 	function onFormSubmit() {}
 
@@ -17,23 +17,49 @@
 	// reCaptcha token
 	let captchaToken: string | null = null;
 
-	async function onIdentify(token: string, provider: AuthProvider) {
-		error = null;
-		loading = true;
+	interface ProviderButtonData {
+		icon: ComponentType;
+		text: string;
+	}
+
+	const PROVIDER_BUTTON_DATA: Record<AuthProvider, ProviderButtonData> = {
+		[AuthProvider.Google]: {
+			icon: GoogleIcon,
+			text: "Sign-in with Google"
+		},
+		[AuthProvider.Microsoft]: {
+			icon: MicrosoftIcon,
+			text: "Sign-in with Microsoft"
+		}
+	};
+
+	type ProviderData = { url: string } & ProviderButtonData;
+
+	let providers: ProviderData[] = [];
+
+	async function loadProviders() {
+		providers = [];
 
 		try {
-			const response: TokenResponse = await openIdLogin({
-				token,
-				provider
-			});
-			setTokenData(response);
-			goto("/dashboard");
+			const response: OIDProvidersResponse = await openIdProviders();
+
+			for (const [key, value] of Object.entries(response.providers)) {
+				let buttonData = PROVIDER_BUTTON_DATA[key as AuthProvider];
+
+				providers.push({
+					icon: buttonData.icon,
+					text: buttonData.text,
+					url: value.auth_url
+				});
+			}
+
+			providers = providers;
 		} catch (e) {
-			error = getErrorMessage(e);
-		} finally {
-			loading = false;
+			console.error("Failed to load auth providers");
 		}
 	}
+
+	onMount(loadProviders);
 </script>
 
 <main class="main">
@@ -57,16 +83,17 @@
 				<Captcha bind:captchaToken />
 
 				<button class="button">Login</button>
+
+				<a href="{base}/auth/register" class="switch">Don't have an account? Register</a>
 			</form>
 			<div>
 				<p class="text">Or login with an alternative method below</p>
 				<ul class="methods">
-					<li>
-						<GoogleAuthButton {onIdentify} />
-					</li>
-					<li>
-						<MicrosoftAuthButton {onIdentify} />
-					</li>
+					{#each providers as provider}
+						<li>
+							<AuthProviderButton icon={provider.icon} text={provider.text} url={provider.url} />
+						</li>
+					{/each}
 				</ul>
 			</div>
 			{#if loading}
@@ -100,10 +127,15 @@
 		font-size: 1.2rem;
 	}
 
-	.forgot {
+	.forgot,
+	.switch {
 		margin-bottom: 0.5rem;
 		font-size: 0.9rem;
 		color: #426391;
+	}
+
+	.switch {
+		margin-top: 0.5rem;
 	}
 
 	label {

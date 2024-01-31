@@ -1,12 +1,16 @@
 use crate::database::entities::user::{CreateUser, User};
 use crate::database::entities::user_link::UserLink;
 use crate::http::models::{auth::*, error::HttpResult};
-use crate::services::auth::AuthService;
+use crate::services::auth::{AuthProvider, AuthService};
 use crate::utils::hashing::hash_password;
 use anyhow::anyhow;
+use axum::routing::get;
 use axum::{routing::post, Extension, Json, Router};
-use openid::{DiscoveredClient, IdToken, StandardClaims};
+use futures::stream::FuturesUnordered;
+use futures::{FutureExt, StreamExt};
+use openid::{DiscoveredClient, IdToken, StandardClaims, Token};
 use sea_orm::{DatabaseConnection, DbErr, TransactionTrait};
+use std::collections::HashMap;
 use std::sync::Arc;
 use tracing::error;
 
@@ -17,16 +21,108 @@ pub fn routes() -> Router {
         .nest(
             "/oid",
             Router::new()
+                // View available providers
+                .route("/providers", get(openid_providers))
+                // Authenticate OpenID code
+                .route("/authenticate", post(openid_authenticate))
                 // Confirm OpenID token
-                .route("/confirm", post(openid_confirm))
-                .route("/create", post(openid_create))
-                .route("/login", post(openid_login)),
+                .route("/create", post(openid_create)),
         )
         // Token routes
         .nest(
             "/token",
             Router::new().route("/refresh", post(refresh_token)),
         )
+}
+
+/// GET /auth/oid/providers
+///
+/// Requests a collection of OpenID providers and their associated
+/// auth URL
+async fn openid_providers(
+    Extension(auth): Extension<Arc<AuthService>>,
+) -> HttpResult<Json<OIDProvidersResponse>> {
+    let mut provider_futures = AuthProvider::all()
+        .into_iter()
+        .map(|provider| {
+            auth.get_provider(provider)
+                .map(move |value| (provider, value))
+        })
+        .collect::<FuturesUnordered<_>>();
+
+    let mut providers = HashMap::new();
+
+    while let Some((provider, Some(client))) = provider_futures.next().await {
+        let auth_url = client.auth_url(&openid::Options {
+            scope: Some(AuthProvider::SCOPES.to_string()),
+            state: Some(provider.to_string()),
+            ..Default::default()
+        });
+
+        providers.insert(provider, OIDProvider { auth_url });
+    }
+
+    Ok(Json(OIDProvidersResponse { providers }))
+}
+
+/// POST /auth/oid/authenticate
+///
+/// Requests an OpenID token from an OpenID code for a specific
+/// provider
+async fn openid_authenticate(
+    Extension(auth): Extension<Arc<AuthService>>,
+    Extension(db): Extension<DatabaseConnection>,
+    Json(req): Json<OIDAuthenticateRequest>,
+) -> HttpResult<Json<OIDAuthenticateResponse>> {
+    let client = auth
+        .get_provider(req.provider)
+        .await
+        .ok_or(OIDError::ProviderUnavailable)?;
+
+    // Exchange the code for a token
+    let token: Token = client
+        .request_token(&req.code)
+        .await
+        .map_err(|_| OIDError::Authentication)?
+        .into();
+
+    let token = token.id_token.ok_or(OIDError::Authentication)?;
+
+    // Decode the token claim
+    let claims = decode_openid_token(&client, token.clone())?;
+
+    // Obtain the email address from user info
+    let email = claims.userinfo.email.ok_or(OIDError::ClaimMissingEmail)?;
+
+    // Obtain the default username if one is present
+    let default_username = claims.userinfo.preferred_username;
+
+    let existing = User::find_by_email(&db, &email).await?;
+
+    if let Some(existing) = existing {
+        // Find an existing link
+        let _ = UserLink::find_by_user(&db, &existing, req.provider)
+            .await?
+            .ok_or(OIDError::NotLinked)?;
+
+        // Create an auth token
+        let user_token_data = auth
+            .create_user_token(&db, &existing)
+            .await
+            .map_err(|err| {
+                error!(name: "err_issue_token", error = %err, "Failed to issue user token");
+                AuthError::FailedTokenIssue
+            })?;
+
+        Ok(Json(OIDAuthenticateResponse::ExistingLinked(
+            TokenResponse { user_token_data },
+        )))
+    } else {
+        Ok(Json(OIDAuthenticateResponse::CreateAccount {
+            token: Box::new(token),
+            default_username,
+        }))
+    }
 }
 
 /// POST /auth/token/refresh
@@ -61,51 +157,22 @@ fn decode_openid_token(
         // Handle token error
         .map_err(|err| {
             error!(name: "openid_decode_token", error = %err, "Failed to decode token");
-            OIDError::Token
+            OIDError::InvalidToken
+        })?;
+
+    // Validate the token
+    client
+        .validate_token(&token, None, None)
+        // Handle invalid token error
+        .map_err(|err| {
+            error!(name: "openid_validate_token", error = %err, "Token failed validation");
+            OIDError::InvalidToken
         })?;
 
     // Extract the token claims
     let (_, claims) = token.unwrap_decoded();
 
     Ok(claims)
-}
-
-/// POST /auth/oid/confirm
-///
-/// Confirms an OpenID token by verifying the token claims
-async fn openid_confirm(
-    Extension(auth): Extension<Arc<AuthService>>,
-    Extension(db): Extension<DatabaseConnection>,
-    Json(req): Json<OIDConfirmRequest>,
-) -> HttpResult<Json<OIDConfirmResponse>> {
-    let client = auth
-        .get_provider(req.provider)
-        .await
-        .ok_or(OIDError::ProviderUnavailable)?;
-
-    // Decode the token claim
-    let claims = decode_openid_token(&client, req.token)?;
-
-    // Obtain the email address from user info
-    let email = claims.userinfo.email.ok_or(OIDError::ClaimMissingEmail)?;
-
-    // Obtain the username if one is present
-    let username = claims.userinfo.preferred_username;
-
-    let existing = User::find_by_email(&db, &email).await?;
-
-    if let Some(existing) = existing {
-        // Find an existing link
-        let _ = UserLink::find_by_user(&db, &existing, req.provider)
-            .await?
-            .ok_or(OIDError::NotLinked)?;
-
-        return Ok(Json(OIDConfirmResponse::Existing));
-    }
-
-    Ok(Json(OIDConfirmResponse::Success {
-        default_username: username,
-    }))
 }
 
 /// POST /auth/oid/create
@@ -165,48 +232,6 @@ async fn openid_create(
         })
         .await?;
 
-    let user_token_data = match auth.create_user_token(&db, &user).await {
-        Ok(value) => value,
-        Err(err) => {
-            error!(name: "err_issue_token", error = %err, "Failed to issue user token");
-
-            return Err(AuthError::FailedTokenIssue.into());
-        }
-    };
-
-    Ok(Json(TokenResponse { user_token_data }))
-}
-
-/// POST /auth/oid/login
-///
-/// Logs into an account using an OpenID token
-async fn openid_login(
-    Extension(auth): Extension<Arc<AuthService>>,
-    Extension(db): Extension<DatabaseConnection>,
-    Json(req): Json<OIDConfirmRequest>,
-) -> HttpResult<Json<TokenResponse>> {
-    let client = auth
-        .get_provider(req.provider)
-        .await
-        .ok_or(OIDError::ProviderUnavailable)?;
-
-    // Decode the token claim
-    let claims = decode_openid_token(&client, req.token)?;
-
-    // Obtain the email address from user info
-    let email = claims.userinfo.email.ok_or(OIDError::ClaimMissingEmail)?;
-
-    // Find the user associated to the email
-    let user = User::find_by_email(&db, &email)
-        .await?
-        .ok_or(OIDError::MissingAccount)?;
-
-    // Find an existing link
-    let _ = UserLink::find_by_user(&db, &user, req.provider)
-        .await?
-        .ok_or(OIDError::NotLinked)?;
-
-    // Create an auth token
     let user_token_data = match auth.create_user_token(&db, &user).await {
         Ok(value) => value,
         Err(err) => {

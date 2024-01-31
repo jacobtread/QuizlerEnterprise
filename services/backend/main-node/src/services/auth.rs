@@ -10,7 +10,7 @@ use chrono::{Duration, Utc};
 use futures::{stream::FuturesUnordered, StreamExt};
 use jsonwebtoken::{decode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use moka::future::Cache;
-use openid::DiscoveredClient;
+use openid::{DiscoveredClient, Options};
 use rand::{
     distributions::{Alphanumeric, DistString},
     rngs::StdRng,
@@ -59,6 +59,12 @@ pub enum AuthProvider {
 }
 
 impl AuthProvider {
+    pub const SCOPES: &'static str = "openid profile email";
+
+    pub fn all() -> [AuthProvider; 2] {
+        [AuthProvider::Google, AuthProvider::Microsoft]
+    }
+
     /// Environment variable prefix for this providers keys
     pub fn env_prefix(&self) -> &'static str {
         match self {
@@ -268,7 +274,10 @@ impl AuthService {
         let client_secret = std::env::var(format!("{env_prefix}_CLIENT_SECRET"))
             .with_context(|| format!("Missing {env_prefix}_CLIENT_SECRET for {provider}"))?;
 
-        let client = DiscoveredClient::discover(client_id, client_secret, None, issuer)
+        let redirect_url =
+            std::env::var("OPENID_REDIRECT_URL").context("Missing OPENID_REDIRECT_URL")?;
+
+        let client = DiscoveredClient::discover(client_id, client_secret, redirect_url, issuer)
             .await
             .with_context(|| format!("Failed to initialize OpenID client for {provider}"))?;
 
