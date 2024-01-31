@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { openIdProviders, type OIDProvidersResponse, AuthProvider } from "$lib/api/auth";
 	import Loader from "$lib/components/Loader.svelte";
-	import Captcha from "$lib/components/Captcha.svelte";
 	import AuthProviderButton from "$lib/components/auth/AuthProviderButton.svelte";
 	import Logo from "$lib/components/icons/Logo.svelte";
 	import { onMount, type ComponentType } from "svelte";
@@ -9,8 +8,7 @@
 
 	import GoogleIcon from "$lib/components/icons/GoogleIcon.svelte";
 	import MicrosoftIcon from "$lib/components/icons/MicrosoftIcon.svelte";
-
-	function onFormSubmit() {}
+	import CaptchaContext, { getCaptchaToken } from "$lib/components/CaptchaContext.svelte";
 
 	let loading: boolean = false;
 	let error: string | null = null;
@@ -60,8 +58,15 @@
 		}
 	}
 
+	async function onFormSubmit() {
+		const token = await getCaptchaToken();
+		console.log(token);
+	}
+
 	onMount(loadProviders);
 </script>
+
+<CaptchaContext />
 
 <main class="main">
 	<div class="content">
@@ -80,8 +85,6 @@
 				<input type="text" id="email" autocomplete="email" required />
 				<label for="password">Password <span class="required">*</span></label>
 				<input type="password" id="password" autocomplete="new-password" required />
-
-				<Captcha bind:captchaToken />
 
 				<button class="button">Login</button>
 

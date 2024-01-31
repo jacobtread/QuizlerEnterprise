@@ -1,17 +1,35 @@
+<script lang="ts" context="module">
+	let captchaId: number | null = null;
+
+	interface CaptchaData {
+		onCompleted(token: string): void;
+		onExpired(): void;
+	}
+
+	const captchaData: CaptchaData = {
+		onCompleted: () => {},
+		onExpired: () => {}
+	};
+
+	export function getCaptchaToken(): Promise<string> {
+		return new Promise((resolve, reject) => {
+			if (grecaptcha === undefined) return reject(new Error("reCaptcha is not initialized"));
+
+			captchaData.onCompleted = resolve;
+			captchaData.onExpired = () => reject(new Error("Captcha expired"));
+
+			// Execute the captcha
+			grecaptcha.execute();
+		});
+	}
+</script>
+
 <script lang="ts">
 	import { PUBLIC_RECAPTCHA_SITE_KEY } from "$env/static/public";
 	import { onDestroy } from "svelte";
 
 	// Parent container for the reCaptcha button
 	let captchaContainer: HTMLDivElement;
-
-	// Captcha token value
-	export let captchaToken: string | null;
-
-	// Field to hide completed captchas
-	let hideCaptcha: boolean = false;
-
-	let captchaId: number | null = null;
 
 	/**
 	 * Handles the google browsers scripts being done loading. Executes the
@@ -22,29 +40,12 @@
 			// Initialize reCaptcha button
 			captchaId = grecaptcha.render(captchaContainer, {
 				sitekey: PUBLIC_RECAPTCHA_SITE_KEY,
-				callback: onCaptchaCompleted,
+				callback: (token: string) => captchaData.onCompleted(token),
 				// Expired callback to clear the reCaptcha token
-				"expired-callback": onCaptchaExpired,
-				theme: "dark",
+				"expired-callback": () => captchaData.onExpired(),
 				size: "invisible"
 			});
-
-			grecaptcha.execute();
 		});
-	}
-
-	function onCaptchaCompleted(token: string) {
-		console.debug("Stored completed reCaptcha token", token);
-		captchaToken = token;
-		setTimeout(() => {
-			hideCaptcha = true;
-		}, 1000);
-	}
-
-	function onCaptchaExpired() {
-		console.debug("Cleared expired reCaptcha token");
-		captchaToken = null;
-		hideCaptcha = false;
 	}
 
 	onDestroy(() => {
@@ -63,4 +64,6 @@
 	></script>
 </svelte:head>
 
-<div class="captcha" bind:this={captchaContainer} class:captcha--hidden={hideCaptcha} />
+<div bind:this={captchaContainer} />
+
+<slot />
