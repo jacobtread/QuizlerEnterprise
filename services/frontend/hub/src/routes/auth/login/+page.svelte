@@ -101,7 +101,7 @@
 			{/if}
 		</div>
 		<div class="logo-wrapper">
-			<Logo fill="#999" />
+			<Logo textFill="#ffffff" bgFill="#666" class="logo" />
 			<p class="tagline">Powerful Quizzes without the extra hassle</p>
 		</div>
 	</div>
@@ -114,6 +114,11 @@
 		background-size: cover;
 		width: 100vw;
 		height: 100vh;
+	}
+
+	.logo-wrapper :global(.logo) {
+		width: 320px;
+		height: auto;
 	}
 
 	.button {
@@ -158,7 +163,7 @@
 	}
 
 	input {
-		padding: 0.75rem 1rem;
+		padding: 0.75rem;
 		display: block;
 		width: 100%;
 		margin-bottom: 0.5rem;
@@ -184,6 +189,9 @@
 	.tagline {
 		margin-top: 1rem;
 		color: #999;
+		padding: 1rem;
+		border-radius: 0.5rem;
+		background-color: #ffffff;
 	}
 
 	.logo-wrapper {
