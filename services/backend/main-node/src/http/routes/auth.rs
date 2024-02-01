@@ -1,12 +1,12 @@
 use crate::database::entities::user::{CreateUser, User};
 use crate::database::entities::user_link::UserLink;
+use crate::http::middleware::json::{ExtractJson, ValidJson};
 use crate::http::models::{auth::*, error::HttpResult};
 use crate::services::auth::{AuthProvider, AuthService};
 use crate::utils::hashing::hash_password;
 use anyhow::anyhow;
 use axum::routing::get;
 use axum::{routing::post, Extension, Json, Router};
-use futures::{FutureExt, StreamExt};
 use openid::{DiscoveredClient, IdToken, StandardClaims, Token};
 use sea_orm::{DatabaseConnection, DbErr, TransactionTrait};
 use std::sync::Arc;
@@ -70,7 +70,7 @@ async fn openid_providers(
 async fn openid_authenticate(
     Extension(auth): Extension<Arc<AuthService>>,
     Extension(db): Extension<DatabaseConnection>,
-    Json(req): Json<OIDAuthenticateRequest>,
+    ExtractJson(req): ExtractJson<OIDAuthenticateRequest>,
 ) -> HttpResult<Json<OIDAuthenticateResponse>> {
     let client = auth
         .get_provider(req.provider)
@@ -129,7 +129,7 @@ async fn openid_authenticate(
 async fn refresh_token(
     Extension(auth): Extension<Arc<AuthService>>,
     Extension(db): Extension<DatabaseConnection>,
-    Json(req): Json<RefreshTokenRequest>,
+    ExtractJson(req): ExtractJson<RefreshTokenRequest>,
 ) -> HttpResult<Json<TokenResponse>> {
     let user_token_data = auth
         .refresh_user_token(&db, &req.refresh_token)
@@ -178,7 +178,7 @@ fn decode_openid_token(
 async fn openid_create(
     Extension(auth): Extension<Arc<AuthService>>,
     Extension(db): Extension<DatabaseConnection>,
-    Json(req): Json<OIDCreateRequest>,
+    ValidJson(req): ValidJson<OIDCreateRequest>,
 ) -> HttpResult<Json<TokenResponse>> {
     let client = auth
         .get_provider(req.provider)

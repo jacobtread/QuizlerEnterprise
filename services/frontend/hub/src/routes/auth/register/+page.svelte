@@ -63,6 +63,10 @@
 		console.log(token);
 	}
 
+	let username: string = "";
+	let email: string = "";
+	let password: string = "";
+
 	onMount(loadProviders);
 </script>
 
@@ -80,13 +84,19 @@
 				{/if}
 
 				<label for="username">Username <span class="required">*</span></label>
-				<input type="text" id="username" autocomplete="username" required />
+				<input type="text" id="username" autocomplete="username" required bind:value={username} />
 				<label for="email">Email <span class="required">*</span></label>
-				<input type="text" id="email" autocomplete="email" required />
+				<input type="text" id="email" autocomplete="email" required bind:value={email} />
 				<label for="password">Password <span class="required">*</span></label>
-				<input type="password" id="password" autocomplete="new-password" required />
+				<input
+					type="password"
+					id="password"
+					autocomplete="new-password"
+					required
+					bind:value={password}
+				/>
 
-				<button class="button">Login</button>
+				<button class="button" type="submit">Register</button>
 
 				<a href="{base}/auth/login" class="switch">Already have an account? Login</a>
 			</form>

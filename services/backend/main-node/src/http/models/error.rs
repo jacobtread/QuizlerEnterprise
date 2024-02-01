@@ -1,20 +1,20 @@
-use std::fmt::{Debug, Display};
-
 use axum::{
+    extract::rejection::JsonRejection,
     http::StatusCode,
     response::{IntoResponse, Response},
     Json,
 };
 use sea_orm::{DbErr, TransactionError};
 use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
 use thiserror::Error;
 use tracing::error;
-use validator::ValidationError;
+use validator::ValidationErrors;
 
-pub type HttpResult<T> = Result<T, TypedError>;
+pub type HttpResult<T> = Result<T, HttpErrorResponse>;
 
 /// Trait implemented by HTTP error response types
-pub trait HttpErrorResponse: std::error::Error + Send + Sync + 'static {
+pub trait HttpError: std::error::Error + Send + Sync + 'static {
     /// Handles logging the error before its consumed
     fn log(&self) {
         error!(name: "err_http", error = %self);
@@ -28,6 +28,19 @@ pub trait HttpErrorResponse: std::error::Error + Send + Sync + 'static {
         self.to_string()
     }
 
+    /// Converts the error into the response
+    fn into_response(self: Box<Self>) -> Response {
+        (
+            self.status_code(),
+            Json(JsonErrorResponse {
+                name: self.name(),
+                message: self.message(),
+                data: (),
+            }),
+        )
+            .into_response()
+    }
+
     /// Names for each of the error types, used for handling
     /// specific errors on the client
     fn name(&self) -> &'static str {
@@ -35,99 +48,122 @@ pub trait HttpErrorResponse: std::error::Error + Send + Sync + 'static {
     }
 }
 
-/// Type adapter that allows anyhow to meet the std::error::Error bounds
-#[derive(Debug)]
-pub struct AnyhowErrorAdapter(anyhow::Error);
+/// Wrapper around [JsonRejection] for changing the error response
+/// format to match the standard format
+#[derive(Debug, Error)]
+#[error(transparent)]
+pub struct JsonErrorAdapter(#[from] JsonRejection);
 
-impl Display for AnyhowErrorAdapter {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("Internal server error")
+impl HttpError for JsonErrorAdapter {
+    fn name(&self) -> &'static str {
+        "json_parse"
+    }
+
+    fn status_code(&self) -> StatusCode {
+        StatusCode::BAD_REQUEST
     }
 }
 
-impl std::error::Error for AnyhowErrorAdapter {}
+impl From<JsonRejection> for HttpErrorResponse {
+    fn from(value: JsonRejection) -> Self {
+        Self(Box::new(JsonErrorAdapter(value)))
+    }
+}
 
-impl HttpErrorResponse for AnyhowErrorAdapter {}
+/// Type adapter that allows anyhow to meet the std::error::Error bounds
+#[derive(Debug, Error)]
+#[error("Internal server error")]
+pub struct AnyhowErrorAdapter(anyhow::Error);
 
-impl HttpErrorResponse for DbErr {
+impl HttpError for AnyhowErrorAdapter {}
+
+impl From<anyhow::Error> for HttpErrorResponse {
+    fn from(value: anyhow::Error) -> Self {
+        Self(Box::new(AnyhowErrorAdapter(value)))
+    }
+}
+
+impl HttpError for DbErr {
     fn message(&self) -> String {
         "Internal server error".to_string()
     }
 }
 
-impl<E> From<E> for TypedError
+impl<E> From<E> for HttpErrorResponse
 where
-    E: HttpErrorResponse,
+    E: HttpError,
 {
     fn from(value: E) -> Self {
-        TypedError::General(Box::new(value))
+        Self(Box::new(value))
     }
 }
-impl<E> From<TransactionError<E>> for TypedError
+impl<E> From<TransactionError<E>> for HttpErrorResponse
 where
-    E: HttpErrorResponse + std::error::Error,
+    E: HttpError + std::error::Error,
 {
     fn from(value: TransactionError<E>) -> Self {
         match value {
             TransactionError::Connection(err) => err.into(),
-            TransactionError::Transaction(err) => TypedError::General(Box::new(err)),
+            TransactionError::Transaction(err) => Self(Box::new(err)),
         }
     }
 }
 
-impl From<anyhow::Error> for TypedError {
-    fn from(value: anyhow::Error) -> Self {
-        Self::General(Box::new(AnyhowErrorAdapter(value)))
-    }
-}
-
+/// Adapter for custom [HttpErrorResponse]'s from [ValidationErrors] containing
+/// the additional validation message data
 #[derive(Debug, Error)]
-pub enum TypedError {
-    /// Dynamic HTTP error type
-    #[error("{0}")]
-    General(Box<dyn HttpErrorResponse>),
-    /// Validation error
-    #[error(transparent)]
-    Validation(Box<ValidationError>),
-}
+#[error(transparent)]
+pub struct ValidationErrorAdapter(#[from] ValidationErrors);
 
-impl TypedError {
-    fn status_code(&self) -> StatusCode {
-        match self {
-            TypedError::General(msg) => msg.status_code(),
-            TypedError::Validation(_) => StatusCode::BAD_REQUEST,
-        }
+impl HttpError for ValidationErrorAdapter {
+    fn name(&self) -> &'static str {
+        "validation"
+    }
+
+    fn message(&self) -> String {
+        "Validation error ocurred".to_string()
+    }
+
+    fn into_response(self: Box<Self>) -> Response {
+        (
+            self.status_code(),
+            Json(JsonErrorResponse {
+                name: self.name(),
+                message: self.message(),
+                data: self.0,
+            }),
+        )
+            .into_response()
     }
 }
 
-/// Error context in a format that can be serialized as JSON
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(tag = "type")]
-pub enum TypedErrorJson {
-    /// General generic error messages
-    General {
-        /// The error name
-        name: &'static str,
-        /// The error message
-        message: String,
-    },
-    /// Validation error messages with fields
-    Validation(Box<ValidationError>),
+impl From<ValidationErrors> for HttpErrorResponse {
+    fn from(value: ValidationErrors) -> Self {
+        Self(Box::new(ValidationErrorAdapter(value)))
+    }
 }
 
-impl IntoResponse for TypedError {
+/// Error response type wrapping some dynamic [HttpError]
+/// type for creating responses
+#[derive(Debug)]
+pub struct HttpErrorResponse(Box<dyn HttpError>);
+
+/// JSON structure for an error response with some generic data
+/// value that can be provided
+#[derive(Debug, Serialize, Deserialize)]
+pub struct JsonErrorResponse<D> {
+    /// The error name
+    pub name: &'static str,
+
+    /// The error message
+    pub message: String,
+
+    /// Additional response data
+    pub data: D,
+}
+
+impl IntoResponse for HttpErrorResponse {
     fn into_response(self) -> Response {
-        let status_code = self.status_code();
-        let json = match self {
-            TypedError::General(err) => {
-                err.log();
-                TypedErrorJson::General {
-                    name: err.name(),
-                    message: err.message(),
-                }
-            }
-            TypedError::Validation(err) => TypedErrorJson::Validation(err),
-        };
-        (status_code, Json(json)).into_response()
+        HttpError::into_response(self.0)
     }
 }

@@ -9,7 +9,7 @@ pub fn require_env<K>(key: K) -> anyhow::Result<String>
 where
     K: AsRef<OsStr> + Display,
 {
-    std::env::var(key)
+    std::env::var(&key)
         // Append the details as a context message
         .with_context(|| format!("Missing {key} environment variable"))
 }

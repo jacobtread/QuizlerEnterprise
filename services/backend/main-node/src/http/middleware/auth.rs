@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::{
     database::entities::user::User,
-    http::models::error::{HttpErrorResponse, TypedError},
+    http::models::error::{HttpError, HttpErrorResponse},
     services::auth::{AuthService, TokenError},
 };
 use async_trait::async_trait;
@@ -39,7 +39,7 @@ pub enum AuthError {
     UnknownUser,
 }
 
-impl HttpErrorResponse for AuthError {
+impl HttpError for AuthError {
     fn status_code(&self) -> axum::http::StatusCode {
         match self {
             AuthError::Header(_) | AuthError::Token(_) | AuthError::UnknownUser => {
@@ -54,7 +54,7 @@ impl<S> FromRequestParts<S> for Auth
 where
     S: Send + Sync,
 {
-    type Rejection = TypedError;
+    type Rejection = HttpErrorResponse;
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
         let auth: Arc<AuthService> = parts
@@ -86,7 +86,7 @@ impl<S> FromRequestParts<S> for AuthGate
 where
     S: Send + Sync,
 {
-    type Rejection = TypedError;
+    type Rejection = HttpErrorResponse;
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
         let auth: Arc<AuthService> = parts

@@ -8,7 +8,7 @@ use validator::Validate;
 
 use crate::services::auth::{AuthProvider, UserTokenData};
 
-use super::error::HttpErrorResponse;
+use super::error::HttpError;
 
 #[derive(Debug, Error)]
 pub enum AuthError {
@@ -16,7 +16,7 @@ pub enum AuthError {
     FailedTokenIssue,
 }
 
-impl HttpErrorResponse for AuthError {}
+impl HttpError for AuthError {}
 
 #[derive(Debug, Error)]
 pub enum OIDError {
@@ -44,7 +44,7 @@ pub enum OIDError {
     AlreadyExists,
 }
 
-impl HttpErrorResponse for OIDError {
+impl HttpError for OIDError {
     fn name(&self) -> &'static str {
         match self {
             OIDError::NotLinked => "oid:not_linked",
