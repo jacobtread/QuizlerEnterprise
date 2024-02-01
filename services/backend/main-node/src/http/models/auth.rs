@@ -14,6 +14,8 @@ use super::error::HttpError;
 pub enum AuthError {
     #[error("Failed to create token, try logging in again")]
     FailedTokenIssue,
+    #[error("An account is already using that email address")]
+    EmailExists,
 }
 
 impl HttpError for AuthError {}
@@ -152,4 +154,26 @@ pub struct OIDProvidersResponse {
 pub struct OIDProvider {
     /// The URL for authenticating with the provider
     pub auth_url: Url,
+}
+
+/// Request to register an account with basic details
+#[derive(Deserialize, Validate)]
+pub struct BasicRegisterRequest {
+    /// The username for the user
+    #[validate(length(
+        min = 4,
+        max = 100,
+        message = "Username must be within 4 to 100 characters long"
+    ))]
+    pub username: String,
+    /// The email for the user
+    #[validate(email(message = "Invalid email address provided"))]
+    pub email: String,
+    /// The password to use for the user
+    #[validate(length(
+        min = 4,
+        max = 100,
+        message = "Password must be within 4 to 100 characters long"
+    ))]
+    pub password: String,
 }

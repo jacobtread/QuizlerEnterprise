@@ -3,7 +3,9 @@ use crate::database::entities::user_link::UserLink;
 use crate::http::middleware::json::{ExtractJson, ValidJson};
 use crate::http::models::{auth::*, error::HttpResult};
 use crate::services::auth::{AuthProvider, AuthService};
+use crate::utils::assert::{self, assert};
 use crate::utils::hashing::hash_password;
+use crate::utils::types::EmailAddress;
 use anyhow::anyhow;
 use axum::routing::get;
 use axum::{routing::post, Extension, Json, Router};
@@ -31,6 +33,26 @@ pub fn routes() -> Router {
             "/token",
             Router::new().route("/refresh", post(refresh_token)),
         )
+}
+
+/// GET /auth/basic/register
+///
+/// Request to register an account using basic email, username, password
+/// credentials
+async fn basic_register(
+    Extension(auth): Extension<Arc<AuthService>>,
+    Extension(db): Extension<DatabaseConnection>,
+    ValidJson(req): ValidJson<BasicRegisterRequest>,
+) -> HttpResult<Json<TokenResponse>> {
+    let email: EmailAddress = req.email.parse()?;
+
+    // Ensure the email address is not in use
+    assert(
+        !User::is_email_taken(&db, &email).await?,
+        AuthError::EmailExists,
+    )?;
+
+    Ok(Json(todo!()))
 }
 
 /// GET /auth/oid/providers
@@ -90,7 +112,11 @@ async fn openid_authenticate(
     let claims = decode_openid_token(&client, token.clone())?;
 
     // Obtain the email address from user info
-    let email = claims.userinfo.email.ok_or(OIDError::ClaimMissingEmail)?;
+    let email: EmailAddress = claims
+        .userinfo
+        .email
+        .ok_or(OIDError::ClaimMissingEmail)?
+        .parse()?;
 
     // Obtain the default username if one is present
     let default_username = claims.userinfo.preferred_username;
@@ -189,7 +215,11 @@ async fn openid_create(
     let claims = decode_openid_token(&client, req.token)?;
 
     // Obtain the email address from user info
-    let email = claims.userinfo.email.ok_or(OIDError::ClaimMissingEmail)?;
+    let email: EmailAddress = claims
+        .userinfo
+        .email
+        .ok_or(OIDError::ClaimMissingEmail)?
+        .parse()?;
 
     // Check if they've verified the email
     let email_verified = claims.userinfo.email_verified;
@@ -209,7 +239,7 @@ async fn openid_create(
                 let mut user = User::create(
                     db,
                     CreateUser {
-                        email,
+                        email: email.clone_inner(),
                         username: req.username,
                         password: hashed_password,
                     },

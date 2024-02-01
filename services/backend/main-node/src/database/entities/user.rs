@@ -1,8 +1,9 @@
 use crate::database::DbResult;
+use crate::utils::types::EmailAddress;
 use chrono::Utc;
-use sea_orm::IntoActiveModel;
 use sea_orm::{entity::prelude::*, ActiveValue};
 use sea_orm::{ActiveModelTrait, ActiveValue::Set, ConnectionTrait};
+use sea_orm::{IntoActiveModel, QuerySelect, SelectColumns};
 use serde::{Deserialize, Serialize};
 use std::future::Future;
 
@@ -88,13 +89,10 @@ impl ActiveModelBehavior for ActiveModel {
 
 impl Model {
     /// Create a new user
-    pub fn create<C>(db: &C, mut create: CreateUser) -> impl Future<Output = DbResult<User>> + '_
+    pub fn create<C>(db: &C, create: CreateUser) -> impl Future<Output = DbResult<User>> + '_
     where
         C: ConnectionTrait,
     {
-        // Ensure the email is in lowercase
-        create.email = create.email.to_lowercase();
-
         create.into_active_model().insert(db)
     }
 
@@ -109,15 +107,40 @@ impl Model {
     /// Finds a user by email if a matching email exists
     pub fn find_by_email<'db, C>(
         db: &'db C,
-        email: &str,
+        email: &EmailAddress,
     ) -> impl Future<Output = DbResult<Option<User>>> + 'db
     where
         C: ConnectionTrait,
     {
-        // Ensure the email is in lowercase
-        let email = email.to_lowercase();
+        Entity::find()
+            .filter(Column::Email.eq(email.as_str()))
+            .one(db)
+    }
 
-        Entity::find().filter(Column::Email.eq(email)).one(db)
+    pub async fn is_email_taken<C>(db: &C, email: &EmailAddress) -> DbResult<bool>
+    where
+        C: ConnectionTrait,
+    {
+        Entity::find()
+            .filter(Column::Email.eq(email.as_str()))
+            .select_only()
+            .select_column(Column::Email)
+            .count(db)
+            .await
+            .map(|value| value > 0)
+    }
+
+    pub async fn is_username_taken<C>(db: &C, username: &str) -> DbResult<bool>
+    where
+        C: ConnectionTrait,
+    {
+        Entity::find()
+            .filter(Column::Username.eq(username))
+            .select_only()
+            .select_column(Column::Username)
+            .count(db)
+            .await
+            .map(|value| value > 0)
     }
 
     /// Sets the email for the provided user to verified at the
