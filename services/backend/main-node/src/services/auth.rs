@@ -1,22 +1,23 @@
-//! This service is responsible for authentication with external services such as
-//! Google, Microsoft, ..etc
-
-use crate::database::entities::{
-    user::{User, UserId},
-    user_refresh_token::UserRefreshToken,
+use crate::{
+    database::entities::{
+        user::{User, UserId},
+        user_refresh_token::UserRefreshToken,
+    },
+    utils::env::{require_env, require_env_prefixed},
 };
 use anyhow::Context;
 use chrono::{Duration, Utc};
-use futures::{stream::FuturesUnordered, StreamExt};
+use futures::{stream::FuturesUnordered, FutureExt, StreamExt};
 use jsonwebtoken::{decode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use moka::future::Cache;
-use openid::{DiscoveredClient, Options};
+use openid::DiscoveredClient;
 use rand::{
     distributions::{Alphanumeric, DistString},
     rngs::StdRng,
     SeedableRng,
 };
-use sea_orm::{ConnectionTrait, DbErr, DeriveActiveEnum};
+use reqwest::Url;
+use sea_orm::{ConnectionTrait, DbErr, DeriveActiveEnum, Iterable};
 use serde::{Deserialize, Serialize};
 use std::{ops::Add, sync::Arc};
 use strum::Display;
@@ -24,7 +25,8 @@ use thiserror::Error;
 use tracing::{debug, error};
 
 pub struct AuthService {
-    providers: Cache<AuthProvider, Arc<DiscoveredClient>>,
+    /// OpenID providers
+    providers: Cache<AuthProvider, SharedClient>,
 
     /// Header for JWT tokens
     jwt_header: Header,
@@ -35,6 +37,9 @@ pub struct AuthService {
     /// Key for decoding JWT tokens
     decoding_key: DecodingKey,
 }
+
+/// Alias for a OpenID client that is shared
+type SharedClient = Arc<DiscoveredClient>;
 
 /// Provider for authentication
 #[derive(
@@ -117,13 +122,13 @@ impl AuthService {
     /// providers in the background
     pub fn new() -> Arc<Self> {
         let providers = Cache::builder()
-            // Refresh providers every 24 hours
-            .time_to_live(std::time::Duration::from_secs(60 * 60 * 24))
+            // Refresh providers every 48 hours
+            .time_to_live(std::time::Duration::from_secs(60 * 60 * 48))
             .initial_capacity(2)
             .build();
 
         // Create JWT keys and header
-        let key = std::env::var(API_JWT_TOKEN_KEY).expect("Missing JWT token key");
+        let key = require_env(API_JWT_TOKEN_KEY).unwrap();
         let key_bytes = key.as_bytes();
         let encoding_key = EncodingKey::from_secret(key_bytes);
         let decoding_key = DecodingKey::from_secret(key_bytes);
@@ -140,9 +145,9 @@ impl AuthService {
 
         let init_service = service.clone();
 
-        // Initialize the providers in a separate task
+        // Initial load of the auth providers ahead of time
         tokio::spawn(async move {
-            init_service.initialize_providers().await;
+            _ = init_service.get_all_providers().await;
         });
 
         service
@@ -233,17 +238,21 @@ impl AuthService {
         Ok(token_data.claims)
     }
 
-    /// Initializes all the auth providers in this service
-    pub async fn initialize_providers(&self) {
-        let mut futures = [AuthProvider::Google, AuthProvider::Microsoft]
-            .into_iter()
-            .map(|provider| self.get_provider(provider))
-            .collect::<FuturesUnordered<_>>();
-
-        while futures.next().await.is_some() {}
+    /// Provides a collection of all available auth providers
+    pub async fn get_all_providers(&self) -> Vec<(AuthProvider, Option<SharedClient>)> {
+        AuthProvider::iter()
+            .map(|provider| {
+                self.get_provider(provider)
+                    .map(move |client| (provider, client))
+            })
+            // Collect the futures into a stream
+            .collect::<FuturesUnordered<_>>()
+            // Collect the future results
+            .collect()
+            .await
     }
 
-    /// Attempts to get the specified provider from the cache, will
+    /// Attempts to get the specified `provider` from the cache, will
     /// initialize the provider if it is expired or not initialized
     pub async fn get_provider(&self, provider: AuthProvider) -> Option<Arc<DiscoveredClient>> {
         match self
@@ -252,34 +261,29 @@ impl AuthService {
             .await
         {
             Ok(value) => Some(value),
-            Err(err) => {
-                error!(name: "err_initialize_provider", error = %err, "Failed to initialize auth provider");
+            Err(error) => {
+                error!(name: "err_initialize_provider", %provider, %error, "Failed to initialize auth provider");
                 None
             }
         }
     }
 
     /// Attempts to create a new provider for the provided [AuthProvider] type
+    /// returns the created client
     #[tracing::instrument]
-    pub async fn create_provider(provider: AuthProvider) -> anyhow::Result<Arc<DiscoveredClient>> {
+    pub async fn create_provider(provider: AuthProvider) -> anyhow::Result<SharedClient> {
         let env_prefix = provider.env_prefix();
 
-        let issuer = std::env::var(format!("{env_prefix}_ISSUER"))
-            .with_context(|| format!("Missing {env_prefix}_ISSUER for {provider}"))?;
-        let issuer = reqwest::Url::parse(&issuer)
-            .with_context(|| format!("Missing invalid issuer URL for {provider}"))?;
-
-        let client_id = std::env::var(format!("{env_prefix}_CLIENT_ID"))
-            .with_context(|| format!("Missing {env_prefix}_CLIENT_ID for {provider}"))?;
-        let client_secret = std::env::var(format!("{env_prefix}_CLIENT_SECRET"))
-            .with_context(|| format!("Missing {env_prefix}_CLIENT_SECRET for {provider}"))?;
-
-        let redirect_url =
-            std::env::var("OPENID_REDIRECT_URL").context("Missing OPENID_REDIRECT_URL")?;
+        let issuer: Url = require_env_prefixed(&env_prefix, "ISSUER")?
+            .parse::<Url>()
+            .context("Parsing issuer URL")?;
+        let client_id = require_env_prefixed(&env_prefix, "CLIENT_ID")?;
+        let client_secret = require_env_prefixed(&env_prefix, "CLIENT_SECRET")?;
+        let redirect_url = require_env("OPENID_REDIRECT_URL")?;
 
         let client = DiscoveredClient::discover(client_id, client_secret, redirect_url, issuer)
             .await
-            .with_context(|| format!("Failed to initialize OpenID client for {provider}"))?;
+            .context("Failed to initialize OpenID client")?;
 
         debug!(name: "start_auth_provider", %provider, "Started auth provider");
 

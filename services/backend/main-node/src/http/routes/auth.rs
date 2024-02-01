@@ -6,11 +6,9 @@ use crate::utils::hashing::hash_password;
 use anyhow::anyhow;
 use axum::routing::get;
 use axum::{routing::post, Extension, Json, Router};
-use futures::stream::FuturesUnordered;
 use futures::{FutureExt, StreamExt};
 use openid::{DiscoveredClient, IdToken, StandardClaims, Token};
 use sea_orm::{DatabaseConnection, DbErr, TransactionTrait};
-use std::collections::HashMap;
 use std::sync::Arc;
 use tracing::error;
 
@@ -42,25 +40,25 @@ pub fn routes() -> Router {
 async fn openid_providers(
     Extension(auth): Extension<Arc<AuthService>>,
 ) -> HttpResult<Json<OIDProvidersResponse>> {
-    let mut provider_futures = AuthProvider::all()
+    // Load the available providers
+    let providers = auth.get_all_providers().await;
+
+    let providers: Vec<(AuthProvider, OIDProvider)> = providers
         .into_iter()
-        .map(|provider| {
-            auth.get_provider(provider)
-                .map(move |value| (provider, value))
+        // Remove any providers with un-initialized clients
+        .filter_map(|(provider, client)| client.map(|client| (provider, client)))
+        // Create the OIDProvider
+        .map(|(provider, client)| {
+            // Create an auth URL for the provider
+            let auth_url = client.auth_url(&openid::Options {
+                scope: Some(AuthProvider::SCOPES.to_string()),
+                state: Some(provider.to_string()),
+                ..Default::default()
+            });
+
+            (provider, OIDProvider { auth_url })
         })
-        .collect::<FuturesUnordered<_>>();
-
-    let mut providers = HashMap::new();
-
-    while let Some((provider, Some(client))) = provider_futures.next().await {
-        let auth_url = client.auth_url(&openid::Options {
-            scope: Some(AuthProvider::SCOPES.to_string()),
-            state: Some(provider.to_string()),
-            ..Default::default()
-        });
-
-        providers.insert(provider, OIDProvider { auth_url });
-    }
+        .collect();
 
     Ok(Json(OIDProvidersResponse { providers }))
 }
@@ -133,14 +131,13 @@ async fn refresh_token(
     Extension(db): Extension<DatabaseConnection>,
     Json(req): Json<RefreshTokenRequest>,
 ) -> HttpResult<Json<TokenResponse>> {
-    let user_token_data = match auth.refresh_user_token(&db, &req.refresh_token).await {
-        Ok(value) => value,
-        Err(err) => {
+    let user_token_data = auth
+        .refresh_user_token(&db, &req.refresh_token)
+        .await
+        .map_err(|err| {
             error!(name: "err_refresh_token", error = %err, "Failed to refresh user token");
-
-            return Err(AuthError::FailedTokenIssue.into());
-        }
-    };
+            AuthError::FailedTokenIssue
+        })?;
 
     Ok(Json(TokenResponse { user_token_data }))
 }
@@ -232,14 +229,14 @@ async fn openid_create(
         })
         .await?;
 
-    let user_token_data = match auth.create_user_token(&db, &user).await {
-        Ok(value) => value,
-        Err(err) => {
+    let user_token_data = auth
+        .create_user_token(&db, &user)
+        .await
+        // Handle errors issuing
+        .map_err(|err| {
             error!(name: "err_issue_token", error = %err, "Failed to issue user token");
-
-            return Err(AuthError::FailedTokenIssue.into());
-        }
-    };
+            AuthError::FailedTokenIssue
+        })?;
 
     Ok(Json(TokenResponse { user_token_data }))
 }

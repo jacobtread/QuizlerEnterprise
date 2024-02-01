@@ -1,9 +1,8 @@
-use std::collections::HashMap;
-
 use axum::http::StatusCode;
 use openid::{IdToken, StandardClaims};
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 use thiserror::Error;
 use validator::Validate;
 
@@ -139,12 +138,18 @@ pub struct TokenResponse {
     pub user_token_data: UserTokenData,
 }
 
+/// Response containing the available OpenID auth providers
+#[serde_as]
 #[derive(Serialize)]
 pub struct OIDProvidersResponse {
-    pub providers: HashMap<AuthProvider, OIDProvider>,
+    /// Collection of available providers
+    #[serde_as(as = "serde_with::Map<_, _>")]
+    pub providers: Vec<(AuthProvider, OIDProvider)>,
 }
 
+/// Details about an OpenID auth provider
 #[derive(Serialize)]
 pub struct OIDProvider {
+    /// The URL for authenticating with the provider
     pub auth_url: Url,
 }
