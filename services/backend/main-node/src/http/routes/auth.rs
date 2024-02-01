@@ -5,7 +5,7 @@ use crate::http::models::{auth::*, error::HttpResult};
 use crate::services::auth::{AuthProvider, AuthService};
 use crate::utils::assert::{self, assert};
 use crate::utils::hashing::hash_password;
-use crate::utils::types::EmailAddress;
+use crate::utils::types::{EmailAddress, Username};
 use anyhow::anyhow;
 use axum::routing::get;
 use axum::{routing::post, Extension, Json, Router};
@@ -44,13 +44,30 @@ async fn basic_register(
     Extension(db): Extension<DatabaseConnection>,
     ValidJson(req): ValidJson<BasicRegisterRequest>,
 ) -> HttpResult<Json<TokenResponse>> {
-    let email: EmailAddress = req.email.parse()?;
-
-    // Ensure the email address is not in use
+    // Ensure the email address isn't already in use
     assert(
-        !User::is_email_taken(&db, &email).await?,
+        !User::is_email_taken(&db, &req.email).await?,
         AuthError::EmailExists,
     )?;
+
+    // Ensure the username isn't already in use
+    assert(
+        !User::is_username_taken(&db, &req.username).await?,
+        AuthError::UsernameExists,
+    )?;
+
+    let hashed_password: String =
+        hash_password(&req.password).map_err(|_| anyhow!("Failed to hash password"))?;
+    // Create the new user
+    let mut user = User::create(
+        db,
+        CreateUser {
+            email: email.into_inner(),
+            username: req.username.into_inner(),
+            password: hashed_password,
+        },
+    )
+    .await?;
 
     Ok(Json(todo!()))
 }
@@ -119,7 +136,10 @@ async fn openid_authenticate(
         .parse()?;
 
     // Obtain the default username if one is present
-    let default_username = claims.userinfo.preferred_username;
+    let default_username: Option<Username> = claims
+        .userinfo
+        .preferred_username
+        .and_then(|value| value.parse().ok());
 
     let existing = User::find_by_email(&db, &email).await?;
 
@@ -224,10 +244,17 @@ async fn openid_create(
     // Check if they've verified the email
     let email_verified = claims.userinfo.email_verified;
 
-    // Ensure the user doesn't exist already
-    if User::find_by_email(&db, &email).await?.is_some() {
-        return Err(OIDError::AlreadyExists.into());
-    }
+    // Ensure the email address isn't already in use
+    assert(
+        !User::is_email_taken(&db, &email).await?,
+        AuthError::EmailExists,
+    )?;
+
+    // Ensure the username isn't already in use
+    assert(
+        !User::is_username_taken(&db, &req.username).await?,
+        AuthError::UsernameExists,
+    )?;
 
     let hashed_password: String =
         hash_password(&req.password).map_err(|_| anyhow!("Failed to hash password"))?;
@@ -239,8 +266,8 @@ async fn openid_create(
                 let mut user = User::create(
                     db,
                     CreateUser {
-                        email: email.clone_inner(),
-                        username: req.username,
+                        email: email.into_inner(),
+                        username: req.username.into_inner(),
                         password: hashed_password,
                     },
                 )

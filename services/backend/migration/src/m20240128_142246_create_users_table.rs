@@ -33,6 +33,7 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .unique_key(),
                     )
+                    .col(ColumnDef::new(Users::Name).string().null())
                     .col(ColumnDef::new(Users::Password).string().not_null())
                     .col(ColumnDef::new(Users::Role).integer().default(0).not_null())
                     .col(ColumnDef::new(Users::CreatedAt).date_time().not_null())
@@ -58,6 +59,8 @@ pub enum Users {
     Email,
     /// When the email was verified
     EmailVerifiedAt,
+    /// Optional custom name for the user
+    Name,
     /// The username of the user
     Username,
     /// The user password hash

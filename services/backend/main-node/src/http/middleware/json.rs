@@ -1,4 +1,4 @@
-use crate::http::models::error::HttpErrorResponse;
+use crate::{http::models::error::HttpErrorResponse, utils::types::TransformValidate};
 use async_trait::async_trait;
 use axum::extract::{FromRequest, Request};
 use serde::de::DeserializeOwned;
@@ -17,12 +17,13 @@ pub struct ValidJson<T>(pub T);
 impl<S, T> FromRequest<S> for ValidJson<T>
 where
     S: Send + Sync,
-    T: DeserializeOwned + Validate,
+    T: DeserializeOwned + Validate + TransformValidate,
 {
     type Rejection = HttpErrorResponse;
 
     async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
-        let ExtractJson(value) = ExtractJson::<T>::from_request(req, state).await?;
+        let ExtractJson(mut value) = ExtractJson::<T>::from_request(req, state).await?;
+        value.transform_validate()?;
         value.validate()?;
         Ok(Self(value))
     }

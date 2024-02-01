@@ -55,14 +55,14 @@
 		}
 	}
 
+	let username: string = "";
+	let email: string = "";
+	let password: string = "";
+
 	async function onFormSubmit() {
 		const token = await getCaptchaToken();
 		console.log(token);
 	}
-
-	let username: string = "";
-	let email: string = "";
-	let password: string = "";
 
 	onMount(loadProviders);
 </script>

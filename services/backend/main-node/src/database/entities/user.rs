@@ -1,5 +1,5 @@
 use crate::database::DbResult;
-use crate::utils::types::EmailAddress;
+use crate::utils::types::{EmailAddress, Username};
 use chrono::Utc;
 use sea_orm::{entity::prelude::*, ActiveValue};
 use sea_orm::{ActiveModelTrait, ActiveValue::Set, ConnectionTrait};
@@ -28,6 +28,8 @@ pub struct Model {
     pub email_verified_at: Option<DateTime>,
     /// The account username
     pub username: String,
+    /// Optional display name for the user
+    pub name: Option<String>,
     /// The password associated with this account
     #[serde(skip)]
     pub password: Option<String>,
@@ -117,27 +119,40 @@ impl Model {
             .one(db)
     }
 
+    /// Finds a user by username if a matching username exists
+    pub fn find_by_username<'db, C>(
+        db: &'db C,
+        username: &Username,
+    ) -> impl Future<Output = DbResult<Option<User>>> + 'db
+    where
+        C: ConnectionTrait,
+    {
+        Entity::find()
+            .filter(Column::Username.eq(username.as_str()))
+            .one(db)
+    }
+
     pub async fn is_email_taken<C>(db: &C, email: &EmailAddress) -> DbResult<bool>
     where
         C: ConnectionTrait,
     {
         Entity::find()
-            .filter(Column::Email.eq(email.as_str()))
             .select_only()
             .select_column(Column::Email)
+            .filter(Column::Email.eq(email.as_str()))
             .count(db)
             .await
             .map(|value| value > 0)
     }
 
-    pub async fn is_username_taken<C>(db: &C, username: &str) -> DbResult<bool>
+    pub async fn is_username_taken<C>(db: &C, username: &Username) -> DbResult<bool>
     where
         C: ConnectionTrait,
     {
         Entity::find()
-            .filter(Column::Username.eq(username))
             .select_only()
             .select_column(Column::Username)
+            .filter(Column::Username.eq(username.as_str()))
             .count(db)
             .await
             .map(|value| value > 0)

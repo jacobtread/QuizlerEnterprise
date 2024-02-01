@@ -6,7 +6,10 @@ use serde_with::serde_as;
 use thiserror::Error;
 use validator::Validate;
 
-use crate::services::auth::{AuthProvider, UserTokenData};
+use crate::{
+    services::auth::{AuthProvider, UserTokenData},
+    utils::types::{EmailAddress, TransformValidate, Username},
+};
 
 use super::error::HttpError;
 
@@ -14,11 +17,30 @@ use super::error::HttpError;
 pub enum AuthError {
     #[error("Failed to create token, try logging in again")]
     FailedTokenIssue,
-    #[error("An account is already using that email address")]
+    /// Account already exists
+    #[error("That email address is already in use")]
     EmailExists,
+    /// Account email already exists
+    #[error("That username is already in use")]
+    UsernameExists,
 }
 
-impl HttpError for AuthError {}
+impl HttpError for AuthError {
+    fn name(&self) -> &'static str {
+        match self {
+            AuthError::FailedTokenIssue => "auth:token_create_failed",
+            AuthError::EmailExists => "auth:email_exists",
+            AuthError::UsernameExists => "auth:username_exists",
+        }
+    }
+
+    fn status_code(&self) -> StatusCode {
+        match self {
+            AuthError::FailedTokenIssue => StatusCode::INTERNAL_SERVER_ERROR,
+            AuthError::EmailExists | AuthError::UsernameExists => StatusCode::CONFLICT,
+        }
+    }
+}
 
 #[derive(Debug, Error)]
 pub enum OIDError {
@@ -41,9 +63,6 @@ pub enum OIDError {
     /// Token claim was missing an email, OAuth is likely mis-configured
     #[error("Failed to determine account email address.")]
     ClaimMissingEmail,
-    /// Account already exists
-    #[error("An account with a matching email already exists")]
-    AlreadyExists,
 }
 
 impl HttpError for OIDError {
@@ -54,7 +73,6 @@ impl HttpError for OIDError {
             OIDError::InvalidToken => "oid:invalid_token",
             OIDError::Authentication => "oid:auth_failed",
             OIDError::ClaimMissingEmail => "oid:claim_missing_email",
-            OIDError::AlreadyExists => "oid:already_exists",
         }
     }
 
@@ -65,7 +83,6 @@ impl HttpError for OIDError {
             OIDError::InvalidToken => StatusCode::BAD_REQUEST,
             OIDError::Authentication => StatusCode::BAD_REQUEST,
             OIDError::ClaimMissingEmail => StatusCode::BAD_REQUEST,
-            OIDError::AlreadyExists => StatusCode::CONFLICT,
         }
     }
 }
@@ -94,12 +111,7 @@ pub struct OIDCreateRequest {
     /// The token itself
     pub token: IdToken<StandardClaims>,
     /// The username for the user
-    #[validate(length(
-        min = 4,
-        max = 100,
-        message = "Username must be within 4 to 100 characters long"
-    ))]
-    pub username: String,
+    pub username: Username,
     /// The password to use for the user
     #[validate(length(
         min = 4,
@@ -107,6 +119,13 @@ pub struct OIDCreateRequest {
         message = "Password must be within 4 to 100 characters long"
     ))]
     pub password: String,
+}
+
+impl TransformValidate for OIDCreateRequest {
+    fn transform_validate(&mut self) -> Result<(), validator::ValidationErrors> {
+        self.username.transform_validate()?;
+        Ok(())
+    }
 }
 
 /// Request to authenticate an OpenID code
@@ -126,7 +145,7 @@ pub enum OIDAuthenticateResponse {
         /// The auth token to authenticate with OpenID
         token: Box<IdToken<StandardClaims>>,
         /// The default username based on the name present in the claim
-        default_username: Option<String>,
+        default_username: Option<Username>,
     },
     /// Account exists and is linked to this method, logged in
     ExistingLinked(TokenResponse),
@@ -160,15 +179,9 @@ pub struct OIDProvider {
 #[derive(Deserialize, Validate)]
 pub struct BasicRegisterRequest {
     /// The username for the user
-    #[validate(length(
-        min = 4,
-        max = 100,
-        message = "Username must be within 4 to 100 characters long"
-    ))]
-    pub username: String,
+    pub username: Username,
     /// The email for the user
-    #[validate(email(message = "Invalid email address provided"))]
-    pub email: String,
+    pub email: EmailAddress,
     /// The password to use for the user
     #[validate(length(
         min = 4,
@@ -176,4 +189,12 @@ pub struct BasicRegisterRequest {
         message = "Password must be within 4 to 100 characters long"
     ))]
     pub password: String,
+}
+
+impl TransformValidate for BasicRegisterRequest {
+    fn transform_validate(&mut self) -> Result<(), validator::ValidationErrors> {
+        self.username.transform_validate();
+        self.email.transform_validate();
+        Ok(())
+    }
 }
