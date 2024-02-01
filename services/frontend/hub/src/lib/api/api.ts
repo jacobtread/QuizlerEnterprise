@@ -43,18 +43,35 @@ export class GenericError extends ServerResponseError {
     }
 }
 
-// TODO: Store validation data
-export class ValidationError extends ServerResponseError {
-    constructor(status: number, options?: ErrorOptions | undefined) {
-        super(status, "Validation Failed", options);
+export class ValidationError extends GenericError {
+    data: ValidationErrorData;
+
+    constructor(status: number, name: string, message: string, data: ValidationErrorData, options?: ErrorOptions | undefined) {
+        super(status, name, message, options);
+        this.data = data;
     }
 }
 
 
-type TypedErrorJson =
-    { type: "General", name: string, message: string }
-    | { type: "Validation", code: string, message: string | null, params: Partial<Record<string, unknown>> }
-    | { type: undefined }
+type ValidationErrorData = Partial<Record<string, ValidationErrorEntry>>;
+interface ValidationErrorEntry {
+    // Available validation codes
+    code: "email" | "url" | "length" | "range" | "must_match" | "contains" | "does_not_contain" | "custom" | "regex" | "required",
+    // Validation error message
+    message: string,
+    // Validation parameters
+    params: Partial<Record<string, string | number>>;
+}
+
+
+
+interface HttpErrorResponse<T> {
+    name: string;
+    message: string;
+    data: T
+}
+
+
 
 /**
  * Makes a request with the provided details
@@ -114,13 +131,9 @@ export async function makeRequest<T>(config: RequestConfig): Promise<T> {
         throw new ServerResponseError(response.status, "Unknown error", { cause: e });
     }
 
-    let responseJson: TypedErrorJson;
+    let responseJson: HttpErrorResponse<unknown>;
     try {
         responseJson = JSON.parse(responseText);
-
-        if (responseJson.type === undefined) {
-            throw new ServerResponseError(response.status, "Unknown error");
-        }
     } catch (e) {
         if (e instanceof SyntaxError) {
             // Handle non-JSON response types
@@ -130,12 +143,10 @@ export async function makeRequest<T>(config: RequestConfig): Promise<T> {
         }
     }
 
-    switch (responseJson.type) {
-        case "General":
-            throw new GenericError(response.status, responseJson.name, responseJson.message)
-        case "Validation":
-            throw new ValidationError(response.status)
-        default:
-            throw new ServerResponseError(response.status, "Unknown error");
+    if (responseJson.name === "validation") {
+        throw new ValidationError(response.status, responseJson.name, responseJson.message, (responseJson as HttpErrorResponse<ValidationErrorData>).data);
+    } else {
+        throw new GenericError(response.status, responseJson.name, responseJson.message)
     }
+
 }
