@@ -13,9 +13,6 @@
 	let loading: boolean = false;
 	let error: string | null = null;
 
-	// reCaptcha token
-	let captchaToken: string | null = null;
-
 	interface ProviderButtonData {
 		icon: ComponentType;
 		text: string;

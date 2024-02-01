@@ -50,10 +50,17 @@ export class ValidationError extends GenericError {
         super(status, name, message, options);
         this.data = data;
     }
+
+    getErrorMessage(key: string): string | null {
+        const entry = this.data[key];
+        if (entry === undefined) return null
+        return entry.message;
+    }
 }
 
 
 type ValidationErrorData = Partial<Record<string, ValidationErrorEntry>>;
+
 interface ValidationErrorEntry {
     // Available validation codes
     code: "email" | "url" | "length" | "range" | "must_match" | "contains" | "does_not_contain" | "custom" | "regex" | "required",
@@ -62,7 +69,6 @@ interface ValidationErrorEntry {
     // Validation parameters
     params: Partial<Record<string, string | number>>;
 }
-
 
 
 interface HttpErrorResponse<T> {
