@@ -21,7 +21,7 @@ where
     type Rejection = HttpErrorResponse;
 
     async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
-        let ExtractJson(mut value) = ExtractJson::<T>::from_request(req, state).await?;
+        let ExtractJson(value) = ExtractJson::<T>::from_request(req, state).await?;
         value.validate(&())?;
         Ok(Self(value))
     }

@@ -22,6 +22,11 @@ pub enum AuthError {
     /// Account email already exists
     #[error("That username is already in use")]
     UsernameExists,
+    /// No account with matching email
+    #[error("No account with that email address")]
+    EmailNotFound,
+    #[error("Incorrect password provided")]
+    IncorrectPassword,
 }
 
 impl HttpError for AuthError {
@@ -30,6 +35,8 @@ impl HttpError for AuthError {
             AuthError::FailedTokenIssue => "auth:token_create_failed",
             AuthError::EmailExists => "auth:email_exists",
             AuthError::UsernameExists => "auth:username_exists",
+            AuthError::EmailNotFound => "auth:email_not_found",
+            AuthError::IncorrectPassword => "auth:incorrect_password",
         }
     }
 
@@ -37,6 +44,8 @@ impl HttpError for AuthError {
         match self {
             AuthError::FailedTokenIssue => StatusCode::INTERNAL_SERVER_ERROR,
             AuthError::EmailExists | AuthError::UsernameExists => StatusCode::CONFLICT,
+            AuthError::EmailNotFound => StatusCode::NOT_FOUND,
+            AuthError::IncorrectPassword => StatusCode::BAD_REQUEST,
         }
     }
 }
@@ -172,6 +181,17 @@ pub struct BasicRegisterRequest {
     /// The username for the user
     #[garde(dive)]
     pub username: Username,
+    /// The email for the user
+    #[garde(dive)]
+    pub email: EmailAddress,
+    /// The password to use for the user
+    #[garde(dive)]
+    pub password: Password,
+}
+
+/// Request to log into an account with basic details
+#[derive(Deserialize, garde::Validate)]
+pub struct BasicLoginRequest {
     /// The email for the user
     #[garde(dive)]
     pub email: EmailAddress,

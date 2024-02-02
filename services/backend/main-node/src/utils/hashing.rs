@@ -22,11 +22,8 @@ pub fn hash_password(password: &str) -> password_hash::Result<String> {
 ///
 /// `password` The plain text password
 /// `hash`     The hashed password
-pub fn verify_password(password: &str, hash: &str) -> bool {
-    let hash = match PasswordHash::new(hash) {
-        Ok(value) => value,
-        _ => return false,
-    };
+pub fn verify_password(password: &str, hash: &str) -> password_hash::Result<()> {
+    let hash = PasswordHash::new(hash)?;
     let argon2 = Argon2::default();
-    argon2.verify_password(password.as_bytes(), &hash).is_ok()
+    argon2.verify_password(password.as_bytes(), &hash)
 }

@@ -32,7 +32,7 @@ pub struct Model {
     pub name: Option<String>,
     /// The password associated with this account
     #[serde(skip)]
-    pub password: Option<String>,
+    pub password: String,
     /// The role for this user
     pub role: UserRole,
     /// When this user was created

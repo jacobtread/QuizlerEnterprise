@@ -14,11 +14,6 @@ pub type HttpResult<T> = Result<T, HttpErrorResponse>;
 
 /// Trait implemented by HTTP error response types
 pub trait HttpError: std::error::Error + Send + Sync + 'static {
-    /// Handles logging the error before its consumed
-    fn log(&self) {
-        error!(name: "err_http", error = %self);
-    }
-
     fn status_code(&self) -> StatusCode {
         StatusCode::INTERNAL_SERVER_ERROR
     }
@@ -163,6 +158,7 @@ pub struct JsonErrorResponse<D> {
 
 impl IntoResponse for HttpErrorResponse {
     fn into_response(self) -> Response {
+        error!(name: "err_http", error = %self.0);
         HttpError::into_response(self.0)
     }
 }

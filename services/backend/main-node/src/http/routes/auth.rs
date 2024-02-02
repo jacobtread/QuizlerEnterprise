@@ -3,10 +3,10 @@ use crate::database::entities::user_link::UserLink;
 use crate::http::middleware::json::{ExtractJson, ValidJson};
 use crate::http::models::{auth::*, error::HttpResult};
 use crate::services::auth::{AuthProvider, AuthService};
-use crate::utils::assert::{self, assert};
-use crate::utils::hashing::hash_password;
+use crate::utils::assert::assert;
+use crate::utils::hashing::{hash_password, verify_password};
 use crate::utils::types::{EmailAddress, Username};
-use anyhow::anyhow;
+use anyhow::Context;
 use axum::routing::get;
 use axum::{routing::post, Extension, Json, Router};
 use openid::{DiscoveredClient, IdToken, StandardClaims, Token};
@@ -19,7 +19,9 @@ pub fn routes() -> Router {
     Router::new()
         .nest(
             "/basic",
-            Router::new().route("/register", post(basic_register)),
+            Router::new()
+                .route("/register", post(basic_register))
+                .route("/login", post(basic_login)),
         )
         // OpenID routes
         .nest(
@@ -61,9 +63,10 @@ async fn basic_register(
     )?;
 
     let hashed_password: String =
-        hash_password(req.password.as_str()).map_err(|_| anyhow!("Failed to hash password"))?;
+        hash_password(req.password.as_str()).context("Hashing password")?;
+
     // Create the new user
-    let mut user = User::create(
+    let user = User::create(
         &db,
         CreateUser {
             email: req.email.into_inner(),
@@ -73,7 +76,34 @@ async fn basic_register(
     )
     .await?;
 
-    Ok(Json(todo!()))
+    // Create an auth token
+    let user_token_data = auth.create_user_token(&db, &user).await.map_err(|error| {
+        error!(name: "err_issue_token", %error, "Failed to issue user token");
+        AuthError::FailedTokenIssue
+    })?;
+
+    Ok(Json(TokenResponse { user_token_data }))
+}
+
+async fn basic_login(
+    Extension(auth): Extension<Arc<AuthService>>,
+    Extension(db): Extension<DatabaseConnection>,
+    ValidJson(req): ValidJson<BasicLoginRequest>,
+) -> HttpResult<Json<TokenResponse>> {
+    let user = User::find_by_email(&db, &req.email)
+        .await?
+        .ok_or(AuthError::EmailNotFound)?;
+
+    verify_password(req.password.as_str(), &user.password)
+        .map_err(|_| AuthError::IncorrectPassword)?;
+
+    // Create an auth token
+    let user_token_data = auth.create_user_token(&db, &user).await.map_err(|error| {
+        error!(name: "err_issue_token", %error, "Failed to issue user token");
+        AuthError::FailedTokenIssue
+    })?;
+
+    Ok(Json(TokenResponse { user_token_data }))
 }
 
 /// GET /auth/oid/providers
@@ -127,10 +157,10 @@ async fn openid_authenticate(
         .map_err(|_| OIDError::Authentication)?
         .into();
 
-    let token = token.id_token.ok_or(OIDError::Authentication)?;
+    let token: IdToken<StandardClaims> = token.id_token.ok_or(OIDError::Authentication)?;
 
     // Decode the token claim
-    let claims = decode_openid_token(&client, token.clone())?;
+    let claims: StandardClaims = decode_openid_token(&client, token.clone())?;
 
     // Obtain the email address from user info
     let email: EmailAddress = claims
@@ -261,7 +291,7 @@ async fn openid_create(
     )?;
 
     let hashed_password: String =
-        hash_password(req.password.as_str()).map_err(|_| anyhow!("Failed to hash password"))?;
+        hash_password(req.password.as_str()).context("Hashing password")?;
 
     let user: User = db
         .transaction(move |db| {
