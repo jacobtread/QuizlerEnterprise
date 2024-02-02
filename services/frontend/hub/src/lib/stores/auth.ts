@@ -79,7 +79,8 @@ export function setTokenData(value: TokenResponse) {
 
     // Determine when to refresh the token (Refresh early)
     const timestamp: number = Date.now();
-    const refreshDelay: number = (value.expiry - timestamp) - EARLY_REFRESH_DELAY_SECONDS;
+    const refreshDelay: number = Math.max(0, (timestamp - value.expiry) - EARLY_REFRESH_DELAY_SECONDS);
+
 
     // Cancel pending token refreshes
     if (tokenRefreshTask !== null) {
