@@ -42,6 +42,35 @@ export type OIDAuthenticateResponse =
     { type: "CreateAccount", token: string, default_username: string | null }
     | { type: "ExistingLinked" } & TokenResponse
 
+export interface BasicRegisterRequest {
+    username: string;
+    email: string;
+    password: string;
+}
+
+export interface BasicLoginRequest {
+    email: string;
+    password: string;
+}
+
+
+export function registerBasic(body: BasicRegisterRequest): Promise<TokenResponse> {
+    return makeRequest({
+        method: "POST",
+        url: "/auth/basic/register",
+        body: body
+    })
+}
+
+
+export function loginBasic(body: BasicLoginRequest): Promise<TokenResponse> {
+    return makeRequest({
+        method: "POST",
+        url: "/auth/basic/login",
+        body: body
+    })
+}
+
 /**
  * Requests a new authorization token using the provided 
  * refresh token

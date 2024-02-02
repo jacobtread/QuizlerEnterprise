@@ -1,5 +1,10 @@
 <script lang="ts">
-	import { openIdProviders, type OIDProvidersResponse, AuthProvider } from "$lib/api/auth";
+	import {
+		openIdProviders,
+		type OIDProvidersResponse,
+		AuthProvider,
+		registerBasic
+	} from "$lib/api/auth";
 	import Loader from "$lib/components/Loader.svelte";
 	import AuthProviderButton from "$lib/components/auth/AuthProviderButton.svelte";
 	import Logo from "$lib/components/icons/Logo.svelte";
@@ -9,6 +14,9 @@
 	import GoogleIcon from "$lib/components/icons/GoogleIcon.svelte";
 	import MicrosoftIcon from "$lib/components/icons/MicrosoftIcon.svelte";
 	import CaptchaContext, { getCaptchaToken } from "$lib/components/CaptchaContext.svelte";
+	import { ValidationError } from "$lib/api/api";
+	import { goto } from "$app/navigation";
+	import { setTokenData } from "$lib/stores/auth";
 
 	let loading: boolean = false;
 	let error: string | null = null;
@@ -62,6 +70,28 @@
 	async function onFormSubmit() {
 		const token = await getCaptchaToken();
 		console.log(token);
+
+		try {
+			const response = await registerBasic({
+				username,
+				email,
+				password
+			});
+
+			setTokenData({
+				token: response.token,
+				refresh_token: response.refresh_token,
+				expiry: response.expiry
+			});
+			goto(`${base}/dashboard`);
+		} catch (e) {
+			console.error(e);
+			if (e instanceof ValidationError) {
+				console.log(e.data.errors);
+			}
+		} finally {
+			loading = false;
+		}
 	}
 
 	onMount(loadProviders);
@@ -107,16 +137,17 @@
 					{/each}
 				</ul>
 			</div>
-			{#if loading}
-				<Loader />
-			{/if}
 		</div>
 		<div class="logo-wrapper">
-			<Logo fill="#999" />
+			<Logo textFill="#ffffff" bgFill="#666" class="logo" />
 			<p class="tagline">Powerful Quizzes without the extra hassle</p>
 		</div>
 	</div>
 </main>
+
+{#if loading}
+	<Loader />
+{/if}
 
 <style lang="scss">
 	.main {
@@ -125,6 +156,11 @@
 		background-size: cover;
 		width: 100vw;
 		height: 100vh;
+	}
+
+	.logo-wrapper :global(.logo) {
+		width: 320px;
+		height: auto;
 	}
 
 	.button {
@@ -136,13 +172,17 @@
 		color: #fff;
 		font-weight: bold;
 		font-size: 1.2rem;
+		cursor: pointer;
+	}
+
+	.switch {
+		margin-bottom: 0.5rem;
+		font-size: 0.9rem;
+		color: #426391;
 	}
 
 	.switch {
 		margin-top: 0.5rem;
-		margin-bottom: 0.5rem;
-		font-size: 0.9rem;
-		color: #426391;
 	}
 
 	label {
@@ -165,7 +205,7 @@
 	}
 
 	input {
-		padding: 0.75rem 1rem;
+		padding: 0.75rem;
 		display: block;
 		width: 100%;
 		margin-bottom: 0.5rem;
@@ -191,6 +231,9 @@
 	.tagline {
 		margin-top: 1rem;
 		color: #999;
+		padding: 1rem;
+		border-radius: 0.5rem;
+		background-color: #ffffff;
 	}
 
 	.logo-wrapper {

@@ -1,5 +1,10 @@
 <script lang="ts">
-	import { openIdProviders, type OIDProvidersResponse, AuthProvider } from "$lib/api/auth";
+	import {
+		openIdProviders,
+		type OIDProvidersResponse,
+		AuthProvider,
+		loginBasic
+	} from "$lib/api/auth";
 	import Loader from "$lib/components/Loader.svelte";
 	import CaptchaContext, { getCaptchaToken } from "$lib/components/CaptchaContext.svelte";
 	import AuthProviderButton from "$lib/components/auth/AuthProviderButton.svelte";
@@ -8,6 +13,9 @@
 	import { base } from "$app/paths";
 	import GoogleIcon from "$lib/components/icons/GoogleIcon.svelte";
 	import MicrosoftIcon from "$lib/components/icons/MicrosoftIcon.svelte";
+	import { setTokenData } from "$lib/stores/auth";
+	import { goto } from "$app/navigation";
+	import { ValidationError } from "$lib/api/api";
 
 	let loading: boolean = false;
 	let error: string | null = null;
@@ -54,9 +62,35 @@
 		}
 	}
 
+	let email: string = "";
+	let password: string = "";
+
 	async function onFormSubmit() {
+		loading = true;
+
 		const token = await getCaptchaToken();
 		console.log(token);
+
+		try {
+			const response = await loginBasic({
+				email,
+				password
+			});
+
+			setTokenData({
+				token: response.token,
+				refresh_token: response.refresh_token,
+				expiry: response.expiry
+			});
+			goto(`${base}/dashboard`);
+		} catch (e) {
+			console.error(e);
+			if (e instanceof ValidationError) {
+				console.log(e.data.errors);
+			}
+		} finally {
+			loading = false;
+		}
 	}
 
 	onMount(loadProviders);
@@ -76,9 +110,15 @@
 				{/if}
 
 				<label for="email">Email <span class="required">*</span></label>
-				<input type="text" id="email" autocomplete="email" required />
+				<input type="text" id="email" autocomplete="email" required bind:value={email} />
 				<label for="password">Password <span class="required">*</span></label>
-				<input type="password" id="password" autocomplete="new-password" required />
+				<input
+					type="password"
+					id="password"
+					autocomplete="new-password"
+					required
+					bind:value={password}
+				/>
 
 				<a href="/" class="forgot">Forgot password?</a>
 
@@ -96,9 +136,6 @@
 					{/each}
 				</ul>
 			</div>
-			{#if loading}
-				<Loader />
-			{/if}
 		</div>
 		<div class="logo-wrapper">
 			<Logo textFill="#ffffff" bgFill="#666" class="logo" />
@@ -106,6 +143,10 @@
 		</div>
 	</div>
 </main>
+
+{#if loading}
+	<Loader />
+{/if}
 
 <style lang="scss">
 	.main {
@@ -130,6 +171,7 @@
 		color: #fff;
 		font-weight: bold;
 		font-size: 1.2rem;
+		cursor: pointer;
 	}
 
 	.forgot,
