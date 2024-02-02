@@ -83,8 +83,7 @@ argon2 = "0.5"
 sailfish = "0.8"
 
 # Validation
-validator = { version = "0.16", features = ["derive"] }
-
+garde = { version = "0.18", features = ["full"] }
 async-trait = "0.1"
 
 moka = { version = "0.12", features = ["future"] }

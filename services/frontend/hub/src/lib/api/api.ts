@@ -51,23 +51,38 @@ export class ValidationError extends GenericError {
         this.data = data;
     }
 
-    getErrorMessage(key: string): string | null {
-        const entry = this.data[key];
+    getErrorMessage(path: ErrorPathSegment[]): string | null {
+        const entry = this.data.errors
+            .find((entry) => isMatchingSegments(entry[0], path));
         if (entry === undefined) return null
-        return entry.message;
+        return entry[1].message;
     }
 }
 
+function isMatchingSegments(a: ErrorPathSegment[], b: ErrorPathSegment[]): boolean {
+    if (a.length !== b.length) return false;
 
-type ValidationErrorData = Partial<Record<string, ValidationErrorEntry>>;
+    for (let i = 0; i < a.length; i++) {
+        if (!isSegmentEqual(a[i], b[i])) {
+            return false;
+        }
 
-interface ValidationErrorEntry {
-    // Available validation codes
-    code: "email" | "url" | "length" | "range" | "must_match" | "contains" | "does_not_contain" | "custom" | "regex" | "required",
-    // Validation error message
-    message: string,
-    // Validation parameters
-    params: Partial<Record<string, string | number>>;
+    }
+
+    return true;
+}
+
+function isSegmentEqual(a: ErrorPathSegment, b: ErrorPathSegment): boolean {
+    return a[0] === b[0] && a[1] === b[1]
+}
+
+
+type ErrorPathSegment = [ErrorPathKind, string];
+type ErrorPathKind = "none" | "key" | "index";
+type ValidationErrorEntry = [ErrorPathSegment[], { message: string }]
+
+interface ValidationErrorData {
+    errors: ValidationErrorEntry[]
 }
 
 

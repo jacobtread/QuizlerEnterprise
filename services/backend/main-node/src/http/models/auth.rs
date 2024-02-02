@@ -4,11 +4,10 @@ use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use thiserror::Error;
-use validator::Validate;
 
 use crate::{
     services::auth::{AuthProvider, UserTokenData},
-    utils::types::{EmailAddress, TransformValidate, Username},
+    utils::types::{EmailAddress, Password, Username},
 };
 
 use super::error::HttpError;
@@ -104,28 +103,20 @@ pub struct RefreshTokenRequest {
 }
 
 /// Request for creating an account from an OpenID token
-#[derive(Deserialize, Validate)]
+#[derive(Deserialize, garde::Validate)]
 pub struct OIDCreateRequest {
     /// The provider the token is from
+    #[garde(skip)]
     pub provider: AuthProvider,
     /// The token itself
+    #[garde(skip)]
     pub token: IdToken<StandardClaims>,
     /// The username for the user
+    #[garde(dive)]
     pub username: Username,
     /// The password to use for the user
-    #[validate(length(
-        min = 4,
-        max = 100,
-        message = "Password must be within 4 to 100 characters long"
-    ))]
-    pub password: String,
-}
-
-impl TransformValidate for OIDCreateRequest {
-    fn transform_validate(&mut self) -> Result<(), validator::ValidationErrors> {
-        self.username.transform_validate()?;
-        Ok(())
-    }
+    #[garde(dive)]
+    pub password: Password,
 }
 
 /// Request to authenticate an OpenID code
@@ -176,25 +167,15 @@ pub struct OIDProvider {
 }
 
 /// Request to register an account with basic details
-#[derive(Deserialize, Validate)]
+#[derive(Deserialize, garde::Validate)]
 pub struct BasicRegisterRequest {
     /// The username for the user
+    #[garde(dive)]
     pub username: Username,
     /// The email for the user
+    #[garde(dive)]
     pub email: EmailAddress,
     /// The password to use for the user
-    #[validate(length(
-        min = 4,
-        max = 100,
-        message = "Password must be within 4 to 100 characters long"
-    ))]
-    pub password: String,
-}
-
-impl TransformValidate for BasicRegisterRequest {
-    fn transform_validate(&mut self) -> Result<(), validator::ValidationErrors> {
-        self.username.transform_validate();
-        self.email.transform_validate();
-        Ok(())
-    }
+    #[garde(dive)]
+    pub password: Password,
 }

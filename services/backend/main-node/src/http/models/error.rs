@@ -9,7 +9,6 @@ use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use thiserror::Error;
 use tracing::error;
-use validator::ValidationErrors;
 
 pub type HttpResult<T> = Result<T, HttpErrorResponse>;
 
@@ -113,9 +112,9 @@ where
 /// the additional validation message data
 #[derive(Debug, Error)]
 #[error(transparent)]
-pub struct ValidationErrorAdapter(#[from] ValidationErrors);
+pub struct GardeErrorAdapter(#[from] garde::Report);
 
-impl HttpError for ValidationErrorAdapter {
+impl HttpError for GardeErrorAdapter {
     fn name(&self) -> &'static str {
         "validation"
     }
@@ -137,9 +136,9 @@ impl HttpError for ValidationErrorAdapter {
     }
 }
 
-impl From<ValidationErrors> for HttpErrorResponse {
-    fn from(value: ValidationErrors) -> Self {
-        Self(Box::new(ValidationErrorAdapter(value)))
+impl From<garde::Report> for HttpErrorResponse {
+    fn from(value: garde::Report) -> Self {
+        Self(Box::new(GardeErrorAdapter(value)))
     }
 }
 

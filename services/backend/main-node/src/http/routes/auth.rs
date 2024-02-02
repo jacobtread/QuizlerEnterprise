@@ -17,6 +17,10 @@ use tracing::error;
 /// Defines the routes under the route group of /auth
 pub fn routes() -> Router {
     Router::new()
+        .nest(
+            "/basic",
+            Router::new().route("/register", post(basic_register)),
+        )
         // OpenID routes
         .nest(
             "/oid",
@@ -57,12 +61,12 @@ async fn basic_register(
     )?;
 
     let hashed_password: String =
-        hash_password(&req.password).map_err(|_| anyhow!("Failed to hash password"))?;
+        hash_password(req.password.as_str()).map_err(|_| anyhow!("Failed to hash password"))?;
     // Create the new user
     let mut user = User::create(
-        db,
+        &db,
         CreateUser {
-            email: email.into_inner(),
+            email: req.email.into_inner(),
             username: req.username.into_inner(),
             password: hashed_password,
         },
@@ -257,7 +261,7 @@ async fn openid_create(
     )?;
 
     let hashed_password: String =
-        hash_password(&req.password).map_err(|_| anyhow!("Failed to hash password"))?;
+        hash_password(req.password.as_str()).map_err(|_| anyhow!("Failed to hash password"))?;
 
     let user: User = db
         .transaction(move |db| {
