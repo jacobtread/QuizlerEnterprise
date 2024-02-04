@@ -14,12 +14,9 @@
 	import GoogleIcon from "$lib/components/icons/GoogleIcon.svelte";
 	import MicrosoftIcon from "$lib/components/icons/MicrosoftIcon.svelte";
 	import CaptchaContext, { getCaptchaToken } from "$lib/components/CaptchaContext.svelte";
-	import { ValidationError } from "$lib/api/api";
 	import { goto } from "$app/navigation";
 	import { setTokenData } from "$lib/stores/auth";
-
-	let loading: boolean = false;
-	let error: string | null = null;
+	import { createForm } from "$lib/stores/form";
 
 	interface ProviderButtonData {
 		icon: ComponentType;
@@ -67,31 +64,25 @@
 	let email: string = "";
 	let password: string = "";
 
+	const { errors, loading, submit } = createForm(onFormSubmit);
+
 	async function onFormSubmit() {
 		const token = await getCaptchaToken();
-		console.log(token);
+		console.debug(token);
 
-		try {
-			const response = await registerBasic({
-				username,
-				email,
-				password
-			});
+		const response = await registerBasic({
+			username,
+			email,
+			password
+		});
 
-			setTokenData({
-				token: response.token,
-				refresh_token: response.refresh_token,
-				expiry: response.expiry
-			});
-			goto(`${base}/dashboard`);
-		} catch (e) {
-			console.error(e);
-			if (e instanceof ValidationError) {
-				console.log(e.data.errors);
-			}
-		} finally {
-			loading = false;
-		}
+		setTokenData({
+			token: response.token,
+			refresh_token: response.refresh_token,
+			expiry: response.expiry
+		});
+
+		goto(`${base}/dashboard`);
 	}
 
 	onMount(loadProviders);
@@ -102,18 +93,28 @@
 <main class="main">
 	<div class="content">
 		<div class="panel">
-			<form on:submit|preventDefault={onFormSubmit} class="form">
+			<form on:submit|preventDefault={submit} class="form">
 				<h1 class="title">Register</h1>
 				<p class="text">Enter your details below</p>
 
-				{#if error}
-					<p class="input-error">{error}</p>
+				{#if $errors["base"]}
+					<p class="input-error">{$errors["base"]}</p>
 				{/if}
 
 				<label for="username">Username <span class="required">*</span></label>
 				<input type="text" id="username" autocomplete="username" required bind:value={username} />
+
+				{#if $errors["username"]}
+					<p class="input-error">{$errors["username"]}</p>
+				{/if}
+
 				<label for="email">Email <span class="required">*</span></label>
 				<input type="text" id="email" autocomplete="email" required bind:value={email} />
+
+				{#if $errors["email"]}
+					<p class="input-error">{$errors["email"]}</p>
+				{/if}
+
 				<label for="password">Password <span class="required">*</span></label>
 				<input
 					type="password"
@@ -122,6 +123,10 @@
 					required
 					bind:value={password}
 				/>
+
+				{#if $errors["password"]}
+					<p class="input-error">{$errors["password"]}</p>
+				{/if}
 
 				<button class="button" type="submit">Register</button>
 
@@ -145,7 +150,7 @@
 	</div>
 </main>
 
-{#if loading}
+{#if $loading}
 	<Loader />
 {/if}
 

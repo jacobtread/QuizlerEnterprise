@@ -50,55 +50,10 @@ export class ValidationError extends GenericError {
         super(status, name, message, options);
         this.data = data;
     }
-
-    getErrorMessage(path: ErrorPathSegment[]): string | null {
-        const entry = this.data.errors
-            .find((entry) => isMatchingSegments(entry[0], path));
-        if (entry === undefined) return null
-        return entry[1].message;
-    }
-}
-
-/**
- * Checks that all the provided segments match
- * 
- * @param a The first list of segments
- * @param b The second list of segments
- * @returns Whether they match
- */
-function isMatchingSegments(a: ErrorPathSegment[], b: ErrorPathSegment[]): boolean {
-    if (a.length !== b.length) return false;
-
-    for (let i = 0; i < a.length; i++) {
-        if (!isSegmentEqual(a[i], b[i])) {
-            return false;
-        }
-
-    }
-
-    return true;
-}
-
-/**
- * Checks that both error paths segments match
- * 
- * @param a The first path segment
- * @param b The second path segment
- * @returns Whether they match
- */
-function isSegmentEqual(a: ErrorPathSegment, b: ErrorPathSegment): boolean {
-    return a[0] === b[0] && a[1] === b[1]
 }
 
 
-type ErrorPathSegment = [ErrorPathKind, string];
-type ErrorPathKind = "none" | "key" | "index";
-type ValidationErrorEntry = [ErrorPathSegment[], { message: string }]
-
-interface ValidationErrorData {
-    errors: ValidationErrorEntry[]
-}
-
+type ValidationErrorData = Partial<Record<string, string>>;
 
 interface HttpErrorResponse<T> {
     name: string;

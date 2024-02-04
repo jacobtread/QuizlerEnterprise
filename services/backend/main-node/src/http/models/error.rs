@@ -5,7 +5,7 @@ use axum::{
     Json,
 };
 use sea_orm::{DbErr, TransactionError};
-use serde::{Deserialize, Serialize};
+use serde::{ser::SerializeMap, Deserialize, Serialize};
 use std::fmt::Debug;
 use thiserror::Error;
 use tracing::error;
@@ -109,6 +109,30 @@ where
 #[error(transparent)]
 pub struct GardeErrorAdapter(#[from] garde::Report);
 
+/// Wrapper around the [garde::Report] error type for converting it into
+/// a more client usable value when serializing
+pub struct JsonReportWrapper(garde::Report);
+
+impl Serialize for JsonReportWrapper {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let iter = self.0.iter();
+        let (_, upper_bound) = iter.size_hint();
+        let mut map = serializer.serialize_map(upper_bound)?;
+
+        for (path, error) in iter {
+            let path = path.to_string();
+            let error = error.to_string();
+
+            map.serialize_entry(&path, &error)?;
+        }
+
+        map.end()
+    }
+}
+
 impl HttpError for GardeErrorAdapter {
     fn name(&self) -> &'static str {
         "validation"
@@ -124,7 +148,7 @@ impl HttpError for GardeErrorAdapter {
             Json(JsonErrorResponse {
                 name: self.name(),
                 message: self.message(),
-                data: self.0,
+                data: JsonReportWrapper(self.0),
             }),
         )
             .into_response()
@@ -144,7 +168,7 @@ pub struct HttpErrorResponse(Box<dyn HttpError>);
 
 /// JSON structure for an error response with some generic data
 /// value that can be provided
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize)]
 pub struct JsonErrorResponse<D> {
     /// The error name
     pub name: &'static str,
