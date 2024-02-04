@@ -15,6 +15,11 @@
 		return new Promise((resolve, reject) => {
 			if (grecaptcha === undefined) return reject(new Error("reCaptcha is not initialized"));
 
+			const existing = grecaptcha.getResponse();
+			if (existing.length > 0) {
+				return resolve(existing);
+			}
+
 			captchaData.onCompleted = resolve;
 			captchaData.onExpired = () => reject(new Error("Captcha expired"));
 
