@@ -15,10 +15,8 @@
 	import MicrosoftIcon from "$lib/components/icons/MicrosoftIcon.svelte";
 	import { setTokenData } from "$lib/stores/auth";
 	import { goto } from "$app/navigation";
-	import { ValidationError } from "$lib/api/api";
-
-	let loading: boolean = false;
-	let error: string | null = null;
+	import { createForm } from "$lib/stores/form";
+	import TextInput from "$lib/components/input/TextInput.svelte";
 
 	interface ProviderButtonData {
 		icon: ComponentType;
@@ -65,32 +63,23 @@
 	let email: string = "";
 	let password: string = "";
 
-	async function onFormSubmit() {
-		loading = true;
+	const { errors, loading, submit } = createForm(onFormSubmit);
 
+	async function onFormSubmit() {
 		const token = await getCaptchaToken();
 		console.log(token);
 
-		try {
-			const response = await loginBasic({
-				email,
-				password
-			});
+		const response = await loginBasic({
+			email,
+			password
+		});
 
-			setTokenData({
-				token: response.token,
-				refresh_token: response.refresh_token,
-				expiry: response.expiry
-			});
-			goto(`${base}/dashboard`);
-		} catch (e) {
-			console.error(e);
-			if (e instanceof ValidationError) {
-				console.log(e.data.errors);
-			}
-		} finally {
-			loading = false;
-		}
+		setTokenData({
+			token: response.token,
+			refresh_token: response.refresh_token,
+			expiry: response.expiry
+		});
+		goto(`${base}/dashboard`);
 	}
 
 	onMount(loadProviders);
@@ -101,22 +90,33 @@
 <main class="main">
 	<div class="content">
 		<div class="panel">
-			<form on:submit|preventDefault={onFormSubmit} class="form">
+			<form on:submit|preventDefault={submit} class="form">
 				<h1 class="title">Login</h1>
 				<p class="text">Enter your details below</p>
 
-				{#if error}
-					<p class="input-error">{error}</p>
+				{#if $errors["base"]}
+					<p class="input-error">{$errors["base"]}</p>
 				{/if}
 
-				<label for="email">Email <span class="required">*</span></label>
-				<input type="text" id="email" autocomplete="email" required bind:value={email} />
-				<label for="password">Password <span class="required">*</span></label>
-				<input
+				<TextInput
+					label="Email"
+					type="text"
+					id="email"
+					autocomplete="email"
+					required
+					error={$errors["email"]}
+					bind:value={email}
+				/>
+
+				<TextInput
+					label="Password"
 					type="password"
 					id="password"
-					autocomplete="new-password"
+					autocomplete="password"
 					required
+					error={$errors["password"]}
+					minlength="4"
+					maxlength="100"
 					bind:value={password}
 				/>
 
@@ -144,7 +144,7 @@
 	</div>
 </main>
 
-{#if loading}
+{#if $loading}
 	<Loader />
 {/if}
 
@@ -185,33 +185,10 @@
 		margin-top: 0.5rem;
 	}
 
-	label {
-		font-weight: bold;
-		display: block;
-		margin-bottom: 0.5rem;
-		margin-top: 0.5rem;
-		color: #666;
-		font-size: 1rem;
-	}
-
-	.required {
-		color: #e06363;
-	}
-
 	.form {
 		display: flex;
 		flex-flow: column;
 		gap: 0.25rem;
-	}
-
-	input {
-		padding: 0.75rem;
-		display: block;
-		width: 100%;
-		margin-bottom: 0.5rem;
-		border: 1px solid #aaa;
-		border-radius: 0.2rem;
-		font-size: 1rem;
 	}
 
 	.content {

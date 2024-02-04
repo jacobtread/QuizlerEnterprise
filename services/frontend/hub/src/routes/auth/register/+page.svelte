@@ -17,6 +17,7 @@
 	import { goto } from "$app/navigation";
 	import { setTokenData } from "$lib/stores/auth";
 	import { createForm } from "$lib/stores/form";
+	import TextInput from "$lib/components/input/TextInput.svelte";
 
 	interface ProviderButtonData {
 		icon: ComponentType;
@@ -101,32 +102,40 @@
 					<p class="input-error">{$errors["base"]}</p>
 				{/if}
 
-				<label for="username">Username <span class="required">*</span></label>
-				<input type="text" id="username" autocomplete="username" required bind:value={username} />
+				<TextInput
+					label="Username"
+					type="text"
+					id="username"
+					autocomplete="username"
+					required
+					error={$errors["username"]}
+					minlength="4"
+					maxlength="100"
+					pattern="[a-zA-Z0-9]+"
+					bind:value={username}
+				/>
 
-				{#if $errors["username"]}
-					<p class="input-error">{$errors["username"]}</p>
-				{/if}
+				<TextInput
+					label="Email"
+					type="text"
+					id="email"
+					autocomplete="email"
+					required
+					error={$errors["email"]}
+					bind:value={email}
+				/>
 
-				<label for="email">Email <span class="required">*</span></label>
-				<input type="text" id="email" autocomplete="email" required bind:value={email} />
-
-				{#if $errors["email"]}
-					<p class="input-error">{$errors["email"]}</p>
-				{/if}
-
-				<label for="password">Password <span class="required">*</span></label>
-				<input
+				<TextInput
+					label="Password"
 					type="password"
 					id="password"
 					autocomplete="new-password"
 					required
+					error={$errors["password"]}
+					minlength="4"
+					maxlength="100"
 					bind:value={password}
 				/>
-
-				{#if $errors["password"]}
-					<p class="input-error">{$errors["password"]}</p>
-				{/if}
 
 				<button class="button" type="submit">Register</button>
 
@@ -190,33 +199,10 @@
 		margin-top: 0.5rem;
 	}
 
-	label {
-		font-weight: bold;
-		display: block;
-		margin-bottom: 0.5rem;
-		margin-top: 0.5rem;
-		color: #666;
-		font-size: 1rem;
-	}
-
-	.required {
-		color: #e06363;
-	}
-
 	.form {
 		display: flex;
 		flex-flow: column;
 		gap: 0.25rem;
-	}
-
-	input {
-		padding: 0.75rem;
-		display: block;
-		width: 100%;
-		margin-bottom: 0.5rem;
-		border: 1px solid #aaa;
-		border-radius: 0.2rem;
-		font-size: 1rem;
 	}
 
 	.content {
