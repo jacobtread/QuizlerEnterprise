@@ -1,0 +1,22 @@
+{
+  "name": "quizler-enterprise",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "start:hub": "cd services/frontend/hub && npm run dev",
+    "start:play": "cd services/frontend/play && npm run dev",
+    "start:main-node": "cd services/backend/main-node && cargo run",
+    "migrate": "cd services/backend/migration && cargo run",
+    "start:database": "docker-compose up database"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jacobtread/QuizlerEnterprise.git"
+  },
+  "author": "Jacobtread",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jacobtread/QuizlerEnterprise/issues"
+  },
+  "homepage": "https://github.com/jacobtread/QuizlerEnterprise#readme"
+}
