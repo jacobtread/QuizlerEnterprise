@@ -1,15 +1,16 @@
 {
-    "cSpell.words": [
-        "chrono",
-        "grecaptcha",
-        "iconify",
-        "Iden",
-        "jsonwebtoken",
-        "moka",
-        "msal",
-        "reqwest",
-        "rngs",
-        "Seedable",
-        "userinfo"
-    ]
+  "cSpell.words": [
+    "chrono",
+    "grecaptcha",
+    "iconify",
+    "Iden",
+    "jsonwebtoken",
+    "moka",
+    "msal",
+    "remoteip",
+    "reqwest",
+    "rngs",
+    "Seedable",
+    "userinfo"
+  ]
 }

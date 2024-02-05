@@ -54,20 +54,26 @@ export interface BasicLoginRequest {
 }
 
 
-export function registerBasic(body: BasicRegisterRequest): Promise<TokenResponse> {
+export function registerBasic(body: BasicRegisterRequest, captchaToken: string): Promise<TokenResponse> {
     return makeRequest({
         method: "POST",
         url: "/auth/basic/register",
-        body: body
+        body: body,
+        headers: {
+            'x-captcha-token': captchaToken
+        }
     })
 }
 
 
-export function loginBasic(body: BasicLoginRequest): Promise<TokenResponse> {
+export function loginBasic(body: BasicLoginRequest, captchaToken: string): Promise<TokenResponse> {
     return makeRequest({
         method: "POST",
         url: "/auth/basic/login",
-        body: body
+        body: body,
+        headers: {
+            'x-captcha-token': captchaToken
+        }
     })
 }
 

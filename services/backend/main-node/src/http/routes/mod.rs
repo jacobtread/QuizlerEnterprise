@@ -1,5 +1,5 @@
 use axum::{
-    http::{header, HeaderValue, Method},
+    http::{header, HeaderName, HeaderValue, Method},
     Router,
 };
 use tower_http::{
@@ -8,6 +8,8 @@ use tower_http::{
     LatencyUnit,
 };
 use tracing::Level;
+
+use super::middleware::recaptcha::RECAPTCHA_HEADER;
 
 mod auth;
 mod user;
@@ -27,7 +29,11 @@ pub fn init_router() -> Router {
             Method::DELETE,
             Method::PATCH,
         ])
-        .allow_headers([header::AUTHORIZATION, header::CONTENT_TYPE])
+        .allow_headers([
+            header::AUTHORIZATION,
+            header::CONTENT_TYPE,
+            HeaderName::from_static(RECAPTCHA_HEADER),
+        ])
         .allow_credentials(true)
         .allow_origin(hub_url);
 

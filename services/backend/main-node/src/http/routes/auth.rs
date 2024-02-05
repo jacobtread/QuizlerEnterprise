@@ -1,6 +1,7 @@
 use crate::database::entities::user::{CreateUser, User};
 use crate::database::entities::user_link::UserLink;
 use crate::http::middleware::json::{ExtractJson, ValidJson};
+use crate::http::middleware::recaptcha::ProtectReCaptcha;
 use crate::http::models::{auth::*, error::HttpResult};
 use crate::services::auth::{AuthProvider, AuthService};
 use crate::utils::assert::assert;
@@ -46,6 +47,7 @@ pub fn routes() -> Router {
 /// Request to register an account using basic email, username, password
 /// credentials
 async fn basic_register(
+    _: ProtectReCaptcha,
     Extension(auth): Extension<Arc<AuthService>>,
     Extension(db): Extension<DatabaseConnection>,
     ValidJson(req): ValidJson<BasicRegisterRequest>,
@@ -86,6 +88,7 @@ async fn basic_register(
 }
 
 async fn basic_login(
+    _: ProtectReCaptcha,
     Extension(auth): Extension<Arc<AuthService>>,
     Extension(db): Extension<DatabaseConnection>,
     ValidJson(req): ValidJson<BasicLoginRequest>,

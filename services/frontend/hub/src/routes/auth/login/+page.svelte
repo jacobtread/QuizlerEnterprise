@@ -66,13 +66,14 @@
 	const { errors, loading, submit } = createForm(onFormSubmit);
 
 	async function onFormSubmit() {
-		const token = await getCaptchaToken();
-		console.log(token);
-
-		const response = await loginBasic({
-			email,
-			password
-		});
+		const captchaToken = await getCaptchaToken();
+		const response = await loginBasic(
+			{
+				email,
+				password
+			},
+			captchaToken
+		);
 
 		setTokenData({
 			token: response.token,

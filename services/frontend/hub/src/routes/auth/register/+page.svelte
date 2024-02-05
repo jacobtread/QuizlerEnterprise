@@ -68,14 +68,15 @@
 	const { errors, loading, submit } = createForm(onFormSubmit);
 
 	async function onFormSubmit() {
-		const token = await getCaptchaToken();
-		console.debug(token);
-
-		const response = await registerBasic({
-			username,
-			email,
-			password
-		});
+		const captchaToken = await getCaptchaToken();
+		const response = await registerBasic(
+			{
+				username,
+				email,
+				password
+			},
+			captchaToken
+		);
 
 		setTokenData({
 			token: response.token,
