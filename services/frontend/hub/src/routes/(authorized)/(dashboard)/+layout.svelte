@@ -1,5 +1,10 @@
 <script lang="ts">
 	import { base } from "$app/paths";
+	import Globe from "$lib/components/icons/Globe.svelte";
+	import Home from "$lib/components/icons/Home.svelte";
+	import Library from "$lib/components/icons/Library.svelte";
+	import LineChart from "$lib/components/icons/LineChart.svelte";
+	import Logout from "$lib/components/icons/Logout.svelte";
 	import { clearAuthToken } from "$lib/stores/auth";
 
 	function logout() {
@@ -23,11 +28,11 @@
 	<div class="container">
 		<aside class="sidebar">
 			<nav class="nav">
-				<a href="{base}/">Home</a>
-				<a href="{base}/browse">Browse</a>
-				<a href="{base}/library">Library</a>
-				<a href="{base}/reports">Reports</a>
-				<a href="{base}/auth/login" on:click={logout}>Logout</a>
+				<a href="{base}/"><Home /> Home</a>
+				<a href="{base}/browse"><Globe /> Browse</a>
+				<a href="{base}/library"><Library /> Library</a>
+				<a href="{base}/reports"><LineChart /> Reports</a>
+				<a href="{base}/auth/login" on:click={logout}><Logout /> Logout</a>
 			</nav>
 		</aside>
 
