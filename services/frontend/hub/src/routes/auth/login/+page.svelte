@@ -18,20 +18,16 @@
 	import { createForm } from "$lib/stores/form";
 	import TextInput from "$lib/components/input/TextInput.svelte";
 
+	import z from "zod";
+
 	interface ProviderButtonData {
 		icon: ComponentType;
 		text: string;
 	}
 
 	const PROVIDER_BUTTON_DATA: Record<AuthProvider, ProviderButtonData> = {
-		[AuthProvider.Google]: {
-			icon: GoogleIcon,
-			text: "Sign-in with Google"
-		},
-		[AuthProvider.Microsoft]: {
-			icon: MicrosoftIcon,
-			text: "Sign-in with Microsoft"
-		}
+		[AuthProvider.Google]: { icon: GoogleIcon, text: "Sign-in with Google" },
+		[AuthProvider.Microsoft]: { icon: MicrosoftIcon, text: "Sign-in with Microsoft" }
 	};
 
 	type ProviderData = { url: string } & ProviderButtonData;
@@ -65,15 +61,17 @@
 
 	const { errors, loading, submit } = createForm(onFormSubmit);
 
+	// Schema for validating the request data
+	const schema = z.object({
+		email: z.string().trim().toLowerCase().email(),
+		password: z.string().trim().min(4).max(100)
+	});
+
 	async function onFormSubmit() {
+		const body = schema.parse({ email, password });
+
 		const captchaToken = await getCaptchaToken();
-		const response = await loginBasic(
-			{
-				email,
-				password
-			},
-			captchaToken
-		);
+		const response = await loginBasic(body, captchaToken);
 
 		setTokenData({
 			token: response.token,
@@ -116,8 +114,6 @@
 					autocomplete="password"
 					required
 					error={$errors["password"]}
-					minlength="4"
-					maxlength="100"
 					bind:value={password}
 				/>
 

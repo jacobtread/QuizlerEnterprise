@@ -1,5 +1,6 @@
 import { ValidationError } from "$lib/api/api";
 import { writable, type Writable } from "svelte/store";
+import { ZodError, type ZodIssue } from "zod";
 
 export type FormErrors = Partial<Record<string, string>>;
 
@@ -19,6 +20,7 @@ interface FormState {
 
 type SubmitAction = () => Promise<void>;
 
+
 export function createForm(submitAction: SubmitAction): FormState {
     const errors = writable({});
     const loading = writable(false);
@@ -37,6 +39,31 @@ export function createForm(submitAction: SubmitAction): FormState {
 
                 // Merge with existing errors
                 errors.update((existing: FormErrors) => ({ ...existing, ...data }));
+            } else if (e instanceof ZodError) {
+                const data: FormErrors = {};
+                e.issues.forEach((issue: ZodIssue) => {
+                    let pathOut = "";
+                    let path: string | number = 0;
+                    for (let i = 0; i < issue.path.length; i++) {
+                        path = issue.path[i];
+                        if (typeof path === "string") {
+                            pathOut += path + ".";
+                        } else {
+                            pathOut += `[${path}]`;
+                        }
+                    }
+
+                    if (typeof path === "string") {
+                        pathOut = pathOut.substring(0, pathOut.length - 1);
+                    }
+
+                    data[pathOut] = issue.message;
+                });
+
+
+                // Merge with existing errors
+                errors.update((existing: FormErrors) => ({ ...existing, ...data }));
+
             } else if (e instanceof Error) {
                 const message = e.message;
                 errors.update((errors: FormErrors) => {

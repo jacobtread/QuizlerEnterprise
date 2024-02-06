@@ -10,7 +10,7 @@
 	import Logo from "$lib/components/icons/Logo.svelte";
 	import { onMount, type ComponentType } from "svelte";
 	import { base } from "$app/paths";
-
+	import z from "zod";
 	import GoogleIcon from "$lib/components/icons/GoogleIcon.svelte";
 	import MicrosoftIcon from "$lib/components/icons/MicrosoftIcon.svelte";
 	import CaptchaContext, { getCaptchaToken } from "$lib/components/CaptchaContext.svelte";
@@ -25,14 +25,8 @@
 	}
 
 	const PROVIDER_BUTTON_DATA: Record<AuthProvider, ProviderButtonData> = {
-		[AuthProvider.Google]: {
-			icon: GoogleIcon,
-			text: "Sign-in with Google"
-		},
-		[AuthProvider.Microsoft]: {
-			icon: MicrosoftIcon,
-			text: "Sign-in with Microsoft"
-		}
+		[AuthProvider.Google]: { icon: GoogleIcon, text: "Sign-up with Google" },
+		[AuthProvider.Microsoft]: { icon: MicrosoftIcon, text: "Sign-up with Microsoft" }
 	};
 
 	type ProviderData = { url: string } & ProviderButtonData;
@@ -67,16 +61,26 @@
 
 	const { errors, loading, submit } = createForm(onFormSubmit);
 
+	// Schema for validating the request data
+	const schema = z.object({
+		username: z
+			.string()
+			.trim()
+			.toLowerCase()
+			.min(4)
+			.max(100)
+			// Username alphanumeric validation
+			.regex(new RegExp("^([a-zA-Z0-9]+)$"), {
+				message: "Username must only contain letters and numbers"
+			}),
+		email: z.string().trim().toLowerCase().email(),
+		password: z.string().trim().min(4).max(100)
+	});
+
 	async function onFormSubmit() {
+		const body = schema.parse({ username, email, password });
 		const captchaToken = await getCaptchaToken();
-		const response = await registerBasic(
-			{
-				username,
-				email,
-				password
-			},
-			captchaToken
-		);
+		const response = await registerBasic(body, captchaToken);
 
 		setTokenData({
 			token: response.token,
@@ -88,6 +92,11 @@
 	}
 
 	onMount(loadProviders);
+
+	$: {
+		username = username.toLowerCase();
+		email = email.toLowerCase();
+	}
 </script>
 
 <CaptchaContext />
@@ -97,7 +106,7 @@
 		<div class="panel">
 			<form on:submit|preventDefault={submit} class="form">
 				<h1 class="title">Register</h1>
-				<p class="text">Enter your details below</p>
+				<p class="text">Enter your details below to register an account</p>
 
 				{#if $errors["base"]}
 					<p class="input-error">{$errors["base"]}</p>
@@ -112,9 +121,12 @@
 					error={$errors["username"]}
 					minlength="4"
 					maxlength="100"
-					pattern="[a-zA-Z0-9]+"
 					bind:value={username}
 				/>
+
+				<p class="text text--small">
+					Username must be all lowercase containing only letters and numbers
+				</p>
 
 				<TextInput
 					label="Email"
@@ -137,6 +149,8 @@
 					maxlength="100"
 					bind:value={password}
 				/>
+
+				<p class="text text--small">Password must be between 4 and 100 characters</p>
 
 				<button class="button" type="submit">Register</button>
 
@@ -263,6 +277,10 @@
 	.text {
 		color: #555;
 		margin-bottom: 0.5rem;
+
+		&--small {
+			font-size: 0.8rem;
+		}
 	}
 
 	.methods {
