@@ -1,6 +1,7 @@
 <!-- Screen for completing the account creation process of an OpenID account -->
 <script lang="ts">
 	import { goto } from "$app/navigation";
+	import { base } from "$app/paths";
 	import { openIdCreate, type TokenResponse, type OIDData } from "$lib/api/auth";
 	import { getErrorMessage } from "$lib/error";
 	import { setTokenData } from "$lib/stores/auth";
@@ -23,7 +24,7 @@
 			const result: TokenResponse = await openIdCreate(openIDData, username, password);
 
 			setTokenData(result);
-			goto("/dashboard");
+			goto(`${base}/`);
 		} catch (e) {
 			error = getErrorMessage(e);
 			return;

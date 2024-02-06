@@ -78,7 +78,7 @@
 			refresh_token: response.refresh_token,
 			expiry: response.expiry
 		});
-		goto(`${base}/dashboard`);
+		goto(`${base}/`);
 	}
 
 	onMount(loadProviders);

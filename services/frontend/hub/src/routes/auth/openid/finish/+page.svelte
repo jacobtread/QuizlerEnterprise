@@ -6,6 +6,7 @@
 	import { goto } from "$app/navigation";
 	import { getErrorMessage } from "$lib/error";
 	import { onMount } from "svelte";
+	import { base } from "$app/paths";
 
 	let loading = true;
 	let error: string | null = null;
@@ -72,7 +73,7 @@
 			);
 
 			setTokenData(result);
-			goto("/dashboard");
+			goto(`${base}/`);
 		} catch (e) {
 			error = getErrorMessage(e);
 			return;
