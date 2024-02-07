@@ -274,11 +274,11 @@ impl AuthService {
     pub async fn create_provider(provider: AuthProvider) -> anyhow::Result<SharedClient> {
         let env_prefix = provider.env_prefix();
 
-        let issuer: Url = require_env_prefixed(&env_prefix, "ISSUER")?
+        let issuer: Url = require_env_prefixed(env_prefix, "ISSUER")?
             .parse::<Url>()
             .context("Parsing issuer URL")?;
-        let client_id = require_env_prefixed(&env_prefix, "CLIENT_ID")?;
-        let client_secret = require_env_prefixed(&env_prefix, "CLIENT_SECRET")?;
+        let client_id = require_env_prefixed(env_prefix, "CLIENT_ID")?;
+        let client_secret = require_env_prefixed(env_prefix, "CLIENT_SECRET")?;
         let redirect_url = require_env("OPENID_REDIRECT_URL")?;
 
         let client = DiscoveredClient::discover(client_id, client_secret, redirect_url, issuer)

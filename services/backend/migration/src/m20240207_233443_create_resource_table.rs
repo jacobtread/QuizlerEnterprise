@@ -1,3 +1,5 @@
+//! Represents a resource stored by the server, this could be images, files etc
+
 use sea_orm_migration::prelude::*;
 
 use crate::m20240128_142246_create_users_table::Users;
@@ -11,27 +13,25 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
-                    .table(Quiz::Table)
+                    .table(Resources::Table)
                     .if_not_exists()
                     .col(
-                        ColumnDef::new(Quiz::Id)
+                        ColumnDef::new(Resources::Id)
                             .integer()
                             .not_null()
                             .auto_increment()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(Quiz::Title).string().not_null())
-                    .col(ColumnDef::new(Quiz::Description).text().not_null())
-                    .col(ColumnDef::new(Quiz::State).integer().not_null())
-                    .col(ColumnDef::new(Quiz::Visibility).integer().not_null())
-                    .col(ColumnDef::new(Quiz::CoverImage).text().not_null())
-                    .col(ColumnDef::new(Quiz::Owner).integer().not_null())
-                    .col(ColumnDef::new(Quiz::CreatedAt).date_time().not_null())
-                    .col(ColumnDef::new(Quiz::UpdatedAt).date_time().not_null())
+                    .col(ColumnDef::new(Resources::MimeType).string().not_null())
+                    .col(ColumnDef::new(Resources::Name).string().not_null())
+                    .col(ColumnDef::new(Resources::Description).string().null())
+                    .col(ColumnDef::new(Resources::Path).string().not_null())
+                    .col(ColumnDef::new(Resources::Owner).integer().not_null())
+                    .col(ColumnDef::new(Resources::Visibility).integer().not_null())
                     // Cascade deletions from the users table onto this table
                     .foreign_key(
                         ForeignKey::create()
-                            .from(Quiz::Table, Quiz::Owner)
+                            .from(Resources::Table, Resources::Owner)
                             .to(Users::Table, Users::Id)
                             .on_delete(ForeignKeyAction::Cascade),
                     )
@@ -42,32 +42,27 @@ impl MigrationTrait for Migration {
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
-            .drop_table(Table::drop().table(Quiz::Table).to_owned())
+            .drop_table(Table::drop().table(Resources::Table).to_owned())
             .await
     }
 }
 
 /// Learn more at https://docs.rs/sea-query#iden
 #[derive(Iden)]
-enum Quiz {
+enum Resources {
     Table,
+    /// Unique ID for the resource
     Id,
-    /// Optional title
-    Title,
-    /// Optional description
+    /// The type of content
+    MimeType,
+    /// The content name
+    Name,
+    /// Optional description for the content
     Description,
-    /// Draft, Published
-    State,
-    /// Visibility state
-    Visibility,
-    /// Optional cover image for the quiz
-    CoverImage,
-    /// JSON quiz data
-    Data,
-    /// The owner of the quiz
+    /// URL path to the resource
+    Path,
+    /// The user that the resource belongs to
     Owner,
-    /// When the quiz was created
-    CreatedAt,
-    /// When the quiz was last updated
-    UpdatedAt,
+    /// Public, Private
+    Visibility,
 }
