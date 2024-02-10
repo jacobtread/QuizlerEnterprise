@@ -26,6 +26,7 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(Quiz::Visibility).integer().not_null())
                     .col(ColumnDef::new(Quiz::CoverImage).text().not_null())
                     .col(ColumnDef::new(Quiz::Owner).integer().not_null())
+                    .col(ColumnDef::new(Quiz::Data).json().not_null())
                     .col(ColumnDef::new(Quiz::CreatedAt).date_time().not_null())
                     .col(ColumnDef::new(Quiz::UpdatedAt).date_time().not_null())
                     // Cascade deletions from the users table onto this table
