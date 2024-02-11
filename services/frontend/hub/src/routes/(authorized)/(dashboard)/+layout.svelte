@@ -4,10 +4,10 @@
 </script>
 
 <div class="outer">
-	<Header />
+	<Sidebar />
 
 	<div class="container">
-		<Sidebar />
+		<Header />
 
 		<main class="main">
 			<slot />
@@ -18,19 +18,21 @@
 <style lang="scss">
 	.outer {
 		display: flex;
-		flex-flow: column;
 		width: 100%;
 		height: 100%;
 	}
 
 	.container {
 		display: flex;
-		flex-flow: row;
+		flex-flow: column;
 		flex: auto;
+		overflow: auto;
+		width: 100%;
 	}
 
 	.main {
 		flex: auto;
 		overflow: auto;
+		padding: 1rem;
 	}
 </style>

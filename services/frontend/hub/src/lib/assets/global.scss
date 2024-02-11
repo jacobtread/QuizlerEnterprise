@@ -10,3 +10,31 @@ body {
 	width: 100%;
 	height: 100%;
 }
+
+.button {
+	width: 100%;
+	background-color: #fff;
+	color: #555;
+	border: none;
+	padding: 0.5rem;
+}
+
+[data-popover-content] {
+	z-index: 30;
+	background-color: #fff;
+	box-shadow: 0 0 10px rgba(0, 0, 0, 0.25);
+	border-radius: 0.25rem;
+
+	padding: 1rem;
+	border-width: 1px;
+	width: 100%;
+	max-width: 328px;
+}
+
+[data-separator-root] {
+	display: block;
+	margin: 0.5rem 1rem;
+
+	height: 1px;
+	background-color: #eee;
+}

@@ -1,18 +1,13 @@
 <script lang="ts">
 	import { base } from "$app/paths";
 	import { page } from "$app/stores";
-	import Globe from "$lib/components/icons/Globe.svelte";
-	import Home from "$lib/components/icons/Home.svelte";
-	import Library from "$lib/components/icons/Library.svelte";
-	import LineChart from "$lib/components/icons/LineChart.svelte";
-	import Logout from "$lib/components/icons/Logout.svelte";
 	import { type Page } from "@sveltejs/kit";
 
-	import { clearAuthToken } from "$lib/stores/auth";
-
-	function logout() {
-		clearAuthToken();
-	}
+	import HomeIcon from "~icons/solar/home-bold-duotone";
+	import ReportsIcon from "~icons/solar/chart-bold-duotone";
+	import LibraryIcon from "~icons/solar/book-2-bold-duotone";
+	import BrowseIcon from "~icons/solar/earth-bold-duotone";
+	import Logo from "./icons/Logo.svelte";
 
 	function isActivePath(page: Page, path: string): boolean {
 		return page.url.pathname === `${base}${path}`;
@@ -20,25 +15,38 @@
 </script>
 
 <aside class="sidebar">
+	<a href={base} class="logo">
+		<Logo height="4rem" width="100%" />
+	</a>
+
 	<nav class="nav">
-		<a href="{base}/" class:active={isActivePath($page, "/")}>
-			<Home /> Home
-		</a>
-		<a href="{base}/browse" class:active={isActivePath($page, "/browse")}>
-			<Globe /> Browse
-		</a>
-		<a href="{base}/library" class:active={isActivePath($page, "/library")}>
-			<Library /> Library
-		</a>
-		<a href="{base}/reports" class:active={isActivePath($page, "/reports")}>
-			<LineChart /> Reports
-		</a>
-		<a href="{base}/auth/login" on:click={logout}><Logout /> Logout</a>
+		<div class="nav__group">
+			<a href="{base}/" class:active={isActivePath($page, "/")}>
+				<HomeIcon /> Home
+			</a>
+			<a href="{base}/browse" class:active={isActivePath($page, "/browse")}>
+				<BrowseIcon /> Browse
+			</a>
+			<a href="{base}/library" class:active={isActivePath($page, "/library")}>
+				<LibraryIcon /> Library
+			</a>
+			<a href="{base}/reports" class:active={isActivePath($page, "/reports")}>
+				<ReportsIcon /> Reports
+			</a>
+		</div>
 	</nav>
 </aside>
 
 <style lang="scss">
 	@use "../assets/theme.scss" as theme;
+
+	.logo {
+		margin-bottom: 1rem;
+	}
+
+	.spacer {
+		margin-top: auto;
+	}
 
 	.sidebar {
 		overflow: auto;
@@ -46,23 +54,32 @@
 		display: flex;
 		flex-flow: column;
 		padding: 1rem;
-		width: 100%;
-		max-width: 16rem;
+		width: 20rem;
 
-		box-shadow: 0 0 10px rgba($color: #000000, $alpha: 0.5);
+		box-shadow: 0 0 10px rgba($color: #000000, $alpha: 0.15);
 	}
 
 	.nav {
 		display: flex;
 		flex-flow: column;
-		gap: 1rem;
+		gap: 0.5rem;
+
+		height: 100%;
+
+		justify-content: space-between;
+
+		&__group {
+			display: flex;
+			flex-flow: column;
+			gap: 0.5rem;
+		}
 	}
 
-	.nav > a {
-		padding: 0.5rem;
-		background-color: #eee;
+	a {
+		padding: 0.75rem;
+		background-color: #fff;
 		border-radius: 0.2rem;
-		color: black;
+		color: #444;
 		text-decoration: none;
 
 		display: flex;

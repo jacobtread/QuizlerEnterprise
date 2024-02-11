@@ -11,12 +11,13 @@
 	import Logo from "$lib/components/icons/Logo.svelte";
 	import { onMount, type ComponentType } from "svelte";
 	import { base } from "$app/paths";
-	import GoogleIcon from "$lib/components/icons/GoogleIcon.svelte";
-	import MicrosoftIcon from "$lib/components/icons/MicrosoftIcon.svelte";
 	import { setTokenData } from "$lib/stores/auth";
 	import { goto } from "$app/navigation";
 	import { createForm } from "$lib/stores/form";
 	import TextInput from "$lib/components/input/TextInput.svelte";
+
+	import GoogleIcon from "~icons/logos/google-icon";
+	import MicrosoftIcon from "~icons/logos/microsoft-icon";
 
 	import z from "zod";
 

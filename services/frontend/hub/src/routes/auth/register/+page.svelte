@@ -11,8 +11,8 @@
 	import { onMount, type ComponentType } from "svelte";
 	import { base } from "$app/paths";
 	import z from "zod";
-	import GoogleIcon from "$lib/components/icons/GoogleIcon.svelte";
-	import MicrosoftIcon from "$lib/components/icons/MicrosoftIcon.svelte";
+	import GoogleIcon from "~icons/logos/google-icon";
+	import MicrosoftIcon from "~icons/logos/microsoft-icon";
 	import CaptchaContext, { getCaptchaToken } from "$lib/components/CaptchaContext.svelte";
 	import { goto } from "$app/navigation";
 	import { setTokenData } from "$lib/stores/auth";
