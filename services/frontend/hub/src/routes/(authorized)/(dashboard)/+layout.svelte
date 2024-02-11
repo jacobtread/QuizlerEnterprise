@@ -1,40 +1,13 @@
 <script lang="ts">
-	import { base } from "$app/paths";
-	import Globe from "$lib/components/icons/Globe.svelte";
-	import Home from "$lib/components/icons/Home.svelte";
-	import Library from "$lib/components/icons/Library.svelte";
-	import LineChart from "$lib/components/icons/LineChart.svelte";
-	import Logout from "$lib/components/icons/Logout.svelte";
-	import { clearAuthToken } from "$lib/stores/auth";
-
-	function logout() {
-		clearAuthToken();
-	}
+	import Header from "$lib/components/Header.svelte";
+	import Sidebar from "$lib/components/Sidebar.svelte";
 </script>
 
 <div class="outer">
-	<header class="header">
-		<div class="header__left"></div>
+	<Header />
 
-		<div class="header__right">
-			<a href="{base}/create">Create</a>
-
-			<div>
-				Avatar
-				<img src="" alt="" />
-			</div>
-		</div>
-	</header>
 	<div class="container">
-		<aside class="sidebar">
-			<nav class="nav">
-				<a href="{base}/"><Home /> Home</a>
-				<a href="{base}/browse"><Globe /> Browse</a>
-				<a href="{base}/library"><Library /> Library</a>
-				<a href="{base}/reports"><LineChart /> Reports</a>
-				<a href="{base}/auth/login" on:click={logout}><Logout /> Logout</a>
-			</nav>
-		</aside>
+		<Sidebar />
 
 		<main class="main">
 			<slot />
@@ -50,32 +23,10 @@
 		height: 100%;
 	}
 
-	.header {
-		height: 3rem;
-		background-color: #ccc;
-	}
-
 	.container {
 		display: flex;
 		flex-flow: row;
 		flex: auto;
-	}
-
-	.sidebar {
-		background-color: #eee;
-		overflow: auto;
-
-		display: flex;
-		flex-flow: column;
-		padding: 1rem;
-		width: 100%;
-		max-width: 16rem;
-	}
-
-	.nav {
-		display: flex;
-		flex-flow: column;
-		gap: 1rem;
 	}
 
 	.main {
