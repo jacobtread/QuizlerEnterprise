@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { base } from "$app/paths";
 	import UserIcon from "~icons/solar/user-circle-bold-duotone";
-	import { Popover, Avatar, Separator } from "bits-ui";
+	import { Popover, Avatar, Separator, DropdownMenu } from "bits-ui";
 
 	import SettingsIcon from "~icons/solar/settings-bold-duotone";
 	import LogoutIcon from "~icons/solar/logout-3-bold-duotone";
@@ -24,41 +24,44 @@
 		<nav class="nav">
 			<a class="button" href="{base}/create">Create</a>
 
-			<Popover.Root>
-				<Popover.Trigger class="button">
+			<DropdownMenu.Root>
+				<DropdownMenu.Trigger class="button">
 					<Avatar.Root>
 						<Avatar.Image />
 						<Avatar.Fallback>
 							<UserIcon width="30" height="30" color="#666" />
 						</Avatar.Fallback>
 					</Avatar.Root>
-				</Popover.Trigger>
-				<Popover.Content sideOffset={8}>
-					<div class="profile">
-						<Avatar.Root>
-							<Avatar.Image />
-							<Avatar.Fallback>
-								<UserIcon width="30" height="30" color="#666" />
-							</Avatar.Fallback>
-						</Avatar.Root>
-						<div>
-							<p class="profile__name">{$user.username}</p>
-							<p class="profile__email">{$user.email}</p>
+				</DropdownMenu.Trigger>
+				<DropdownMenu.Content sideOffset={8}>
+					<DropdownMenu.Item>
+						<div class="profile">
+							<Avatar.Root>
+								<Avatar.Image />
+								<Avatar.Fallback>
+									<UserIcon width="30" height="30" color="#666" />
+								</Avatar.Fallback>
+							</Avatar.Root>
+							<div>
+								<p class="profile__name">{$user.username}</p>
+								<p class="profile__email">{$user.email}</p>
+							</div>
 						</div>
-					</div>
-					<Separator.Root />
-
-					<a class="button" href="/settings">
-						<SettingsIcon /> Settings
-					</a>
-
-					<Separator.Root />
-
-					<a class="button" href="{base}/auth/login" on:click={logout}>
-						<LogoutIcon /> Logout
-					</a>
-				</Popover.Content>
-			</Popover.Root>
+					</DropdownMenu.Item>
+					<DropdownMenu.Separator />
+					<DropdownMenu.Item>
+						<a class="button" href="/settings">
+							<SettingsIcon /> Settings
+						</a>
+					</DropdownMenu.Item>
+					<DropdownMenu.Separator />
+					<DropdownMenu.Item>
+						<a class="button" href="{base}/auth/login" on:click={logout}>
+							<LogoutIcon /> Logout
+						</a>
+					</DropdownMenu.Item>
+				</DropdownMenu.Content>
+			</DropdownMenu.Root>
 		</nav>
 	</div>
 </header>
@@ -84,9 +87,10 @@
 	}
 
 	.header {
-		background: #fff;
+		background: #fafafa;
+		box-shadow: 0 0 10px rgba($color: #000000, $alpha: 0.15);
 
-		border: 1px solid #ccc;
+		border-bottom: 2px solid #ccc;
 		padding: 0.5rem 1rem;
 
 		display: flex;

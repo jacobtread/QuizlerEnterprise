@@ -56,6 +56,7 @@
 		padding: 1rem;
 		width: 20rem;
 
+		border-right: 2px solid #ccc;
 		box-shadow: 0 0 10px rgba($color: #000000, $alpha: 0.15);
 	}
 
