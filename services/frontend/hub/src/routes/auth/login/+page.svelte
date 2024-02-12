@@ -1,61 +1,15 @@
 <script lang="ts">
-	import {
-		openIdProviders,
-		type OIDProvidersResponse,
-		AuthProvider,
-		loginBasic
-	} from "$lib/api/auth";
+	import { loginBasic } from "$lib/api/auth";
 	import Loader from "$lib/components/Loader.svelte";
 	import CaptchaContext, { getCaptchaToken } from "$lib/components/CaptchaContext.svelte";
-	import AuthProviderButton from "$lib/components/auth/AuthProviderButton.svelte";
 	import Logo from "$lib/components/icons/Logo.svelte";
-	import { onMount, type ComponentType } from "svelte";
 	import { base } from "$app/paths";
 	import { setTokenData } from "$lib/stores/auth";
 	import { goto } from "$app/navigation";
 	import { createForm } from "$lib/stores/form";
 	import TextInput from "$lib/components/input/TextInput.svelte";
-
-	import GoogleIcon from "~icons/logos/google-icon";
-	import MicrosoftIcon from "~icons/logos/microsoft-icon";
-
 	import z from "zod";
-
-	interface ProviderButtonData {
-		icon: ComponentType;
-		text: string;
-	}
-
-	const PROVIDER_BUTTON_DATA: Record<AuthProvider, ProviderButtonData> = {
-		[AuthProvider.Google]: { icon: GoogleIcon, text: "Sign-in with Google" },
-		[AuthProvider.Microsoft]: { icon: MicrosoftIcon, text: "Sign-in with Microsoft" }
-	};
-
-	type ProviderData = { url: string } & ProviderButtonData;
-
-	let providers: ProviderData[] = [];
-
-	async function loadProviders() {
-		providers = [];
-
-		try {
-			const response: OIDProvidersResponse = await openIdProviders();
-
-			for (const [key, value] of Object.entries(response.providers)) {
-				let buttonData = PROVIDER_BUTTON_DATA[key as AuthProvider];
-
-				providers.push({
-					icon: buttonData.icon,
-					text: buttonData.text,
-					url: value.auth_url
-				});
-			}
-
-			providers = providers;
-		} catch (e) {
-			console.error("Failed to load auth providers");
-		}
-	}
+	import AuthProviders from "$lib/components/auth/AuthProviders.svelte";
 
 	let email: string = "";
 	let password: string = "";
@@ -70,7 +24,6 @@
 
 	async function onFormSubmit() {
 		const body = schema.parse({ email, password });
-
 		const captchaToken = await getCaptchaToken();
 		const response = await loginBasic(body, captchaToken);
 
@@ -81,8 +34,6 @@
 		});
 		goto(`${base}/`);
 	}
-
-	onMount(loadProviders);
 </script>
 
 <CaptchaContext />
@@ -126,13 +77,8 @@
 			</form>
 			<div>
 				<p class="text">Or login with an alternative method below</p>
-				<ul class="methods">
-					{#each providers as provider}
-						<li>
-							<AuthProviderButton icon={provider.icon} text={provider.text} url={provider.url} />
-						</li>
-					{/each}
-				</ul>
+
+				<AuthProviders buttonPrefix="Sign-in" />
 			</div>
 		</div>
 		<div class="logo-wrapper">
@@ -246,13 +192,5 @@
 	.text {
 		color: #555;
 		margin-bottom: 0.5rem;
-	}
-
-	.methods {
-		list-style: none;
-		display: flex;
-		gap: 1rem;
-		flex-flow: column;
-		margin-top: 1rem;
 	}
 </style>
