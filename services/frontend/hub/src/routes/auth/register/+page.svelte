@@ -11,44 +11,41 @@
 	import TextInput from "$lib/components/input/TextInput.svelte";
 	import AuthProviders from "$lib/components/auth/AuthProviders.svelte";
 
-	let username: string = "";
-	let email: string = "";
-	let password: string = "";
+	const { data, errors, loading, submit } = createForm({
+		// The form submission handler
+		submitAction: async (data) => {
+			const captchaToken = await getCaptchaToken();
+			const response = await registerBasic(data, captchaToken);
 
-	const { errors, loading, submit } = createForm(onFormSubmit);
-
-	// Schema for validating the request data
-	const schema = z.object({
-		username: z
-			.string()
-			.trim()
-			.toLowerCase()
-			.min(4)
-			.max(100)
-			// Username alphanumeric validation
-			.regex(new RegExp("^([a-zA-Z0-9]+)$"), {
-				message: "Username must only contain letters and numbers"
-			}),
-		email: z.string().trim().toLowerCase().email(),
-		password: z.string().trim().min(4).max(100)
+			setTokenData({
+				token: response.token,
+				refresh_token: response.refresh_token,
+				expiry: response.expiry
+			});
+			goto(`${base}/`);
+		},
+		// The default form data
+		defaultData: { username: "", email: "", password: "" },
+		// Schema for validating the form data
+		schema: z.object({
+			username: z
+				.string()
+				.trim()
+				.toLowerCase()
+				.min(4)
+				.max(100)
+				// Username alphanumeric validation
+				.regex(new RegExp("^([a-zA-Z0-9]+)$"), {
+					message: "Username must only contain letters and numbers"
+				}),
+			email: z.string().trim().toLowerCase().email(),
+			password: z.string().trim().min(4).max(100)
+		})
 	});
 
-	async function onFormSubmit() {
-		const body = schema.parse({ username, email, password });
-		const captchaToken = await getCaptchaToken();
-		const response = await registerBasic(body, captchaToken);
-
-		setTokenData({
-			token: response.token,
-			refresh_token: response.refresh_token,
-			expiry: response.expiry
-		});
-		goto(`${base}/`);
-	}
-
 	$: {
-		username = username.toLowerCase();
-		email = email.toLowerCase();
+		$data.username = $data.username.toLowerCase();
+		$data.email = $data.email.toLowerCase();
 	}
 </script>
 
@@ -74,7 +71,7 @@
 					error={$errors["username"]}
 					minlength="4"
 					maxlength="100"
-					bind:value={username}
+					bind:value={$data.username}
 				/>
 
 				<p class="text text--small">
@@ -88,7 +85,7 @@
 					autocomplete="email"
 					required
 					error={$errors["email"]}
-					bind:value={email}
+					bind:value={$data.email}
 				/>
 
 				<TextInput
@@ -100,7 +97,7 @@
 					error={$errors["password"]}
 					minlength="4"
 					maxlength="100"
-					bind:value={password}
+					bind:value={$data.password}
 				/>
 
 				<p class="text text--small">Password must be between 4 and 100 characters</p>

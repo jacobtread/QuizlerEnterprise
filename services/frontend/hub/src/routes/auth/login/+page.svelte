@@ -11,29 +11,27 @@
 	import z from "zod";
 	import AuthProviders from "$lib/components/auth/AuthProviders.svelte";
 
-	let email: string = "";
-	let password: string = "";
+	const { data, errors, loading, submit } = createForm({
+		// The form submission handler
+		submitAction: async (data) => {
+			const captchaToken = await getCaptchaToken();
+			const response = await loginBasic(data, captchaToken);
 
-	const { errors, loading, submit } = createForm(onFormSubmit);
-
-	// Schema for validating the request data
-	const schema = z.object({
-		email: z.string().trim().toLowerCase().email(),
-		password: z.string().trim().min(4).max(100)
+			setTokenData({
+				token: response.token,
+				refresh_token: response.refresh_token,
+				expiry: response.expiry
+			});
+			goto(`${base}/`);
+		},
+		// The default form data
+		defaultData: { email: "", password: "" },
+		// Schema for validating the form data
+		schema: z.object({
+			email: z.string().trim().toLowerCase().email(),
+			password: z.string().trim().min(4).max(100)
+		})
 	});
-
-	async function onFormSubmit() {
-		const body = schema.parse({ email, password });
-		const captchaToken = await getCaptchaToken();
-		const response = await loginBasic(body, captchaToken);
-
-		setTokenData({
-			token: response.token,
-			refresh_token: response.refresh_token,
-			expiry: response.expiry
-		});
-		goto(`${base}/`);
-	}
 </script>
 
 <CaptchaContext />
@@ -56,7 +54,7 @@
 					autocomplete="email"
 					required
 					error={$errors["email"]}
-					bind:value={email}
+					bind:value={$data.email}
 				/>
 
 				<TextInput
@@ -66,7 +64,7 @@
 					autocomplete="password"
 					required
 					error={$errors["password"]}
-					bind:value={password}
+					bind:value={$data.password}
 				/>
 
 				<a href="/" class="forgot">Forgot password?</a>

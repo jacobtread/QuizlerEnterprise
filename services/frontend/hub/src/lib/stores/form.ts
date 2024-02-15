@@ -1,10 +1,13 @@
 import { ValidationError } from "$lib/api/api";
-import { writable, type Writable } from "svelte/store";
-import { ZodError, type ZodIssue } from "zod";
+import { get, writable, type Writable } from "svelte/store";
+import { ZodError, ZodType, type ZodIssue } from "zod";
 
 export type FormErrors = Partial<Record<string, string>>;
 
-interface FormState {
+interface FormState<D> {
+    // Data contained in the form
+    data: Writable<D>,
+
     // Store for form errors
     errors: Writable<FormErrors>,
 
@@ -18,10 +21,14 @@ interface FormState {
     submit: () => Promise<void>,
 }
 
-type SubmitAction = () => Promise<void>;
+interface CreateFormData<D, V extends ZodType> {
+    submitAction(data: V["_output"]): Promise<void>,
+    defaultData: D,
+    schema: V,
+}
 
-
-export function createForm(submitAction: SubmitAction): FormState {
+export function createForm<D, V extends ZodType>(params: CreateFormData<D, V>): FormState<D> {
+    const data = writable(params.defaultData);
     const errors = writable({});
     const loading = writable(false);
 
@@ -31,8 +38,11 @@ export function createForm(submitAction: SubmitAction): FormState {
         loading.set(true);
 
         try {
+            // Apply data validation
+            const validated = params.schema.parse(get(data));
+
             // Submit the action
-            await submitAction();
+            await params.submitAction(validated);
         } catch (e) {
             if (e instanceof ValidationError) {
                 const data = e.data;
@@ -85,6 +95,7 @@ export function createForm(submitAction: SubmitAction): FormState {
     }
 
     return {
+        data,
         errors,
         loading,
         reset,
