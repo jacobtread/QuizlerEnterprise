@@ -12,3 +12,10 @@ This is my upcoming Enterprise version of [Quizler](https://github.com/jacobtrea
   - The web app for creating, managing, and finding quizzes
 - Play
   - The web app for playing quizzes
+
+## Stack
+
+- Main Node - Rust, Axum
+- Hub - SvelteKit, TypeScript, SCSS
+- Play - Svelte, TypeScript, SCSS
+- Database - PostgreSQL
