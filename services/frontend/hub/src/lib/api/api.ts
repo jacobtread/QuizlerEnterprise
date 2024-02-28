@@ -1,142 +1,127 @@
-import { tokenData } from "$lib/stores/auth";
-import { PUBLIC_API_BASE_URL } from "$env/static/public"
+import { PUBLIC_API_BASE_URL } from "$env/static/public";
+import axios, { AxiosError, type AxiosInstance } from "axios";
 
-// Http request method types
-export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE";
+export const axiosInstance: AxiosInstance = axios.create({
+	baseURL: PUBLIC_API_BASE_URL
+});
 
-// Structure of errors from make request [statusCode, text]
-export type RequestError = [number, string];
+export const ENDPOINTS = {
+	auth: {
+		basic: {
+			register: "/auth/basic/register",
+			login: "/auth/basic/login"
+		},
+		token: {
+			refresh: "/auth/token/refresh"
+		},
+		oid: {
+			providers: "/auth/oid/providers",
+			authenticate: "/auth/oid/authenticate",
+			create: "/auth/oid/create"
+		}
+	},
+	user: {
+		self: "/user/self"
+	}
+};
 
-// Structure for a configuration object to provide to the
-// makeRequest function
-interface RequestConfig {
-    // The request HTTP method to use
-    method: HttpMethod;
-    // The route segment of the URL
-    url: string;
-    // Optional body to encode as JSON
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    body?: any,
-    /// Optional additional headers
-    headers?: Record<string, string>,
-}
+axiosInstance.interceptors.request.use(
+	function (config) {
+		return config;
+	},
+	function (error) {
+		if (error instanceof Error) {
+			return Promise.reject(error);
+		} else {
+			return Promise.reject(
+				new Error(typeof error === "string" ? error : "Unknown error", { cause: error })
+			);
+		}
+	}
+);
 
+// Transform error error responses
+axiosInstance.interceptors.response.use(
+	function (response) {
+		return response;
+	},
+	function (err) {
+		if (err instanceof AxiosError) {
+			if (err.response) {
+				const { data, status } = err.response;
+
+				if (typeof data === "string") {
+					return Promise.reject(new ServerResponseError(status, data, { cause: err }));
+				}
+
+				if (typeof data === "object") {
+					const responseJson: HttpErrorResponse<unknown> = data as HttpErrorResponse<unknown>;
+
+					if (responseJson.name === "validation") {
+						return Promise.reject(
+							new ValidationError(
+								status,
+								responseJson.name,
+								responseJson.message,
+								(responseJson as HttpErrorResponse<ValidationErrorData>).data
+							)
+						);
+					} else {
+						return Promise.reject(
+							new GenericError(status, responseJson.name, responseJson.message)
+						);
+					}
+				}
+			}
+
+			return Promise.reject(err);
+		} else {
+			console.error(err);
+			return Promise.reject(new Error("Unknown error", { cause: err }));
+		}
+	}
+);
 
 // Error for server response errors
 export class ServerResponseError extends Error {
-    // The response status code
-    status: number;
+	// The response status code
+	status: number;
 
-    constructor(status: number, message?: string | undefined, options?: ErrorOptions | undefined) {
-        super(message, options);
-        this.status = status;
-    }
+	constructor(status: number, message?: string | undefined, options?: ErrorOptions | undefined) {
+		super(message, options);
+		this.status = status;
+	}
 }
 
 export class GenericError extends ServerResponseError {
-    // The error name
-    name: string;
+	// The error name
+	name: string;
 
-    constructor(status: number, name: string, message: string, options?: ErrorOptions | undefined) {
-        super(status, message, options);
-        this.name = name;
-    }
+	constructor(status: number, name: string, message: string, options?: ErrorOptions | undefined) {
+		super(status, message, options);
+		this.name = name;
+	}
 }
 
 export class ValidationError extends GenericError {
-    data: ValidationErrorData;
+	data: ValidationErrorData;
 
-    constructor(status: number, name: string, message: string, data: ValidationErrorData, options?: ErrorOptions | undefined) {
-        super(status, name, message, options);
-        this.data = data;
-    }
+	constructor(
+		status: number,
+		name: string,
+		message: string,
+		data: ValidationErrorData,
+		options?: ErrorOptions | undefined
+	) {
+		super(status, name, message, options);
+		this.data = data;
+	}
 }
-
 
 type ValidationErrorData = Partial<Record<string, string>>;
 
 interface HttpErrorResponse<T> {
-    name: string;
-    message: string;
-    data: T
-}
-
-
-
-/**
- * Makes a request with the provided details
- * 
- * @param method The HTTP method to use for the request
- * @param baseURL THe base portion of the URL
- * @param url The route portion of the URL
- * @param token The optional token to use for authentication
- * @param body The optional body to use 
- * @returns A promise for the provided type or an error
- */
-export async function makeRequest<T>(config: RequestConfig): Promise<T> {
-    const init: RequestInit = { method: config.method };
-    const headers: Record<string, string> = config.headers ?? {};
-
-
-    // Apply the token if provided
-    if (tokenData !== null) {
-        headers["Authorization"] = "Bearer " + tokenData.token;
-    }
-
-    // Serialize JSON body if provided
-    if (config.method != "GET" && config.body) {
-        headers["Content-Type"] = "application/json";
-        init.body = JSON.stringify(config.body);
-    }
-
-    init.headers = headers;
-
-    const url = new URL(config.url, PUBLIC_API_BASE_URL);
-
-    let response: Response;
-    // Handle initial fetch errors
-    try {
-        response = await fetch(url, init);
-    } catch (e) {
-        throw new Error("Failed to connect", { cause: e });
-    }
-
-    /// Handle 2xx status codes 
-    if (response.ok) {
-        // Handle invalid JSON responses
-        try {
-            return await response.json();
-        } catch (e) {
-            console.error("Invalid JSON response", e);
-            throw new ServerResponseError(response.status, "Invalid server response", { cause: e });
-        }
-    }
-
-    // Handle error response
-    let responseText: string;
-    try {
-        responseText = await response.text();
-    } catch (e) {
-        console.error("Failed to get response text", e);
-        throw new ServerResponseError(response.status, "Unknown error", { cause: e });
-    }
-
-    let responseJson: HttpErrorResponse<unknown>;
-    try {
-        responseJson = JSON.parse(responseText);
-    } catch (e) {
-        if (e instanceof SyntaxError) {
-            // Handle non-JSON response types
-            throw new ServerResponseError(response.status, responseText);
-        } else {
-            throw new ServerResponseError(response.status, "Unknown error", { cause: e });
-        }
-    }
-
-    if (responseJson.name === "validation") {
-        throw new ValidationError(response.status, responseJson.name, responseJson.message, (responseJson as HttpErrorResponse<ValidationErrorData>).data);
-    } else {
-        throw new GenericError(response.status, responseJson.name, responseJson.message)
-    }
-
+	name: string;
+	message: string;
+	data: T;
 }

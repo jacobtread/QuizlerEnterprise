@@ -47,7 +47,10 @@
 				sitekey: PUBLIC_RECAPTCHA_SITE_KEY,
 				callback: (token: string) => captchaData.onCompleted(token),
 				// Expired callback to clear the reCaptcha token
-				"expired-callback": () => captchaData.onExpired(),
+				"expired-callback": () => {
+					captchaData.onExpired();
+					grecaptcha.reset();
+				},
 				size: "invisible"
 			});
 		});
