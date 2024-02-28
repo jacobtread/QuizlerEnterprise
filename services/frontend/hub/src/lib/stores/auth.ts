@@ -28,8 +28,6 @@ export async function loadUser(): Promise<User | null> {
 
 	if (tokenData === null) return null;
 
-	console.log(tokenData);
-
 	let value: User;
 	try {
 		value = await getUserAPI();
@@ -87,8 +85,6 @@ export function setTokenData(value: TokenResponse) {
 	const timestamp: number = Math.trunc(Date.now() / 1000);
 	const refreshDelay: number = Math.max(0, value.expiry - EARLY_REFRESH_DELAY_SECONDS - timestamp);
 
-	console.log(refreshDelay);
-
 	// Cancel pending token refreshes
 	if (tokenRefreshTask !== null) {
 		clearTimeout(tokenRefreshTask);
@@ -113,7 +109,6 @@ export function setTokenData(value: TokenResponse) {
 async function doTokenRefresh(token: string) {
 	try {
 		const response = await refreshToken(token);
-		console.log(response);
 		setTokenData(response);
 	} catch (e) {
 		clearAuthToken();

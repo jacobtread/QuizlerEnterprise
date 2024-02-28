@@ -23,7 +23,7 @@
 		const errorDescription = searchParams.get("error_description");
 
 		if (error !== null) {
-			console.log(error, errorDescription);
+			console.error(error, errorDescription);
 			gotoError(error, errorDescription ?? "Unknown error occurred", `${base}/auth/login`);
 			return;
 		}
