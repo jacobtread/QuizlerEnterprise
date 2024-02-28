@@ -3,14 +3,16 @@
 	import * as z from "zod";
 	import TextInput from "$lib/components/input/TextInput.svelte";
 	import Loader from "$lib/components/Loader.svelte";
+	import paths from "$lib/paths";
+	import { createQuiz } from "$lib/api/quiz";
+	import { goto } from "$app/navigation";
 
 	const { data, errors, loading, submit } = createForm({
 		// The form submission handler
 		submitAction: async (data) => {
-			console.log(data);
-			// TODO: Create API
-			// TODO: Goto editor for quiz
-			// goto(`${base}/`);
+			const quiz = await createQuiz(data.name);
+
+			goto(paths.create.specific(quiz.id.toString()));
 		},
 		// The default form data
 		defaultData: { name: "" },
@@ -27,6 +29,10 @@
 			<form on:submit|preventDefault={submit} class="form">
 				<h1 class="title">Create Quiz</h1>
 				<p class="text">Give your quiz a name...</p>
+
+				{#if $errors["base"]}
+					<p class="input-error">{$errors["base"]}</p>
+				{/if}
 
 				<TextInput
 					label="Quiz Name"

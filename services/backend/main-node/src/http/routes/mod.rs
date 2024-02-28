@@ -12,6 +12,7 @@ use tracing::Level;
 use super::middleware::recaptcha::RECAPTCHA_HEADER;
 
 mod auth;
+mod quiz;
 mod user;
 
 /// Initializes the router and all routes in the app
@@ -40,6 +41,7 @@ pub fn init_router() -> Router {
     Router::new()
         .nest("/auth", auth::routes())
         .nest("/user", user::routes())
+        .nest("/quiz", quiz::routes())
         // Request tracing
         .layer(
             TraceLayer::new_for_http()

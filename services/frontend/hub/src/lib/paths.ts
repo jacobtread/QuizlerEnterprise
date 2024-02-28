@@ -1,20 +1,22 @@
+import { base } from "$app/paths";
+
 const paths = {
 	auth: {
-		login: "/auth/login",
-		register: "/auth/register",
+		login: `${base}/auth/login`,
+		register: `${base}/auth/register`,
 		openid: {
-			complete: "/auth/openid/complete",
-			finish: "/auth/openid/finish"
+			complete: `${base}/auth/openid/complete`,
+			finish: `${base}/auth/openid/finish`
 		}
 	},
-	root: "/",
-	error: "/error",
-	browse: "/browse",
-	library: "/library",
-	reports: "/reports",
+	root: `${base}/`,
+	error: `${base}/error`,
+	browse: `${base}/browse`,
+	library: `${base}/library`,
+	reports: `${base}/reports`,
 	create: {
-		root: "/create",
-		specific: (id: string) => `/create/${id}`
+		root: `${base}/create`,
+		specific: (id: string) => `${base}/create/${id}`
 	}
 };
 

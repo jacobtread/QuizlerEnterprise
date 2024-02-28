@@ -2,8 +2,10 @@ use crate::database::DbResult;
 use crate::services::auth::AuthProvider;
 use chrono::Utc;
 use sea_orm::entity::prelude::*;
+use sea_orm::ActiveValue::NotSet;
 use sea_orm::{ActiveValue::Set, ConnectionTrait};
 use serde::{Deserialize, Serialize};
+use serde_json::Map;
 use std::future::Future;
 
 use super::user::{User, UserId};
@@ -14,17 +16,17 @@ pub type QuizEntity = Entity;
 pub type QuizActiveModel = ActiveModel;
 
 /// Database structure for a quiz
-#[derive(Debug, Clone, PartialEq, DeriveEntityModel)]
+#[derive(Debug, Clone, PartialEq, DeriveEntityModel, Serialize)]
 #[sea_orm(table_name = "quiz")]
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: QuizId,
-    pub title: Option<String>,
-    pub description: Option<String>,
+    pub title: String,
+    pub description: String,
     pub state: QuizState,
     pub visibility: QuizVisibility,
     pub cover_image: Option<String>,
-    pub data: String,
+    pub data: serde_json::Value,
     pub owner: UserId,
     /// When this quiz was created
     pub created_at: DateTime,
@@ -62,9 +64,58 @@ pub enum Relation {
     User,
 }
 
-impl ActiveModelBehavior for ActiveModel {}
+#[async_trait::async_trait]
+impl ActiveModelBehavior for ActiveModel {
+    /// Handles updating the `updated_at` field before the model is saved, using
+    /// the current date time.
+    ///
+    /// If the save is an insertion the `created_at` field will also be updated
+    async fn before_save<C>(mut self, _db: &C, insert: bool) -> Result<Self, DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        let now = Utc::now().naive_utc();
+        self.updated_at = Set(now);
 
-impl Model {}
+        if insert {
+            self.created_at = Set(now);
+        }
+
+        Ok(self)
+    }
+}
+
+impl Model {
+    /// Create a new quiz
+    pub fn create<'db, C>(
+        db: &'db C,
+        owner: &User,
+        title: String,
+    ) -> impl Future<Output = DbResult<Quiz>> + 'db
+    where
+        C: ConnectionTrait,
+    {
+        ActiveModel {
+            title: Set(title),
+            description: Set(String::new()),
+            state: Set(QuizState::Draft),
+            visibility: Set(QuizVisibility::Private),
+            cover_image: Set(None),
+            data: Set(serde_json::Value::Object(Map::new())),
+            owner: Set(owner.id),
+            ..Default::default()
+        }
+        .insert(db)
+    }
+
+    /// Finds a quiz by its ID
+    pub fn find_by_id<C>(db: &C, id: QuizId) -> impl Future<Output = DbResult<Option<Quiz>>> + '_
+    where
+        C: ConnectionTrait,
+    {
+        Entity::find_by_id(id).one(db)
+    }
+}
 
 impl Related<super::user::Entity> for Entity {
     fn to() -> RelationDef {

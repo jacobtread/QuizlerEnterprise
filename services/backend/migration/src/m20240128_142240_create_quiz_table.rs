@@ -24,7 +24,7 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(Quiz::Description).text().not_null())
                     .col(ColumnDef::new(Quiz::State).integer().not_null())
                     .col(ColumnDef::new(Quiz::Visibility).integer().not_null())
-                    .col(ColumnDef::new(Quiz::CoverImage).text().not_null())
+                    .col(ColumnDef::new(Quiz::CoverImage).text().null())
                     .col(ColumnDef::new(Quiz::Owner).integer().not_null())
                     .col(ColumnDef::new(Quiz::Data).json().not_null())
                     .col(ColumnDef::new(Quiz::CreatedAt).date_time().not_null())
@@ -53,7 +53,7 @@ impl MigrationTrait for Migration {
 enum Quiz {
     Table,
     Id,
-    /// Optional title
+    /// title
     Title,
     /// Optional description
     Description,

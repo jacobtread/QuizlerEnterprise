@@ -22,6 +22,12 @@ export const ENDPOINTS = {
 	},
 	user: {
 		self: "/user/self"
+	},
+	quiz: {
+		create: "/quiz/create",
+		specific: (id: number) => ({
+			root: `/quiz/${id}`
+		})
 	}
 };
 

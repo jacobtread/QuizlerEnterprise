@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { page } from "$app/stores";
+	import { useQuiz } from "$lib/api/quiz";
 	import { user } from "$lib/stores/auth";
 
-	const quiz = $page.params.quiz;
+	const queryResult = useQuiz(Number($page.params.quiz));
 </script>
 
-<h1>Welcome {$user.username} {quiz}</h1>
+<h1>Welcome {$user.username} {JSON.stringify($queryResult.data)}</h1>
 
 <style lang="scss">
 </style>
