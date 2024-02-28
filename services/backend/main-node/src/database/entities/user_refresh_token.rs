@@ -2,7 +2,8 @@ use crate::database::DbResult;
 use chrono::Utc;
 use sea_orm::sea_query::OnConflict;
 use sea_orm::{entity::prelude::*, ActiveValue};
-use sea_orm::{ActiveModelTrait, ActiveValue::Set, ConnectionTrait};
+use sea_orm::{ActiveValue::Set, ConnectionTrait};
+
 use std::future::Future;
 
 use super::user::{User, UserId};
