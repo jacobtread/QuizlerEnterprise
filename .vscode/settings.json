@@ -11,6 +11,7 @@
     "reqwest",
     "rngs",
     "Seedable",
+    "tanstack",
     "userinfo"
   ]
 }

@@ -3,10 +3,10 @@
 	import { useQuiz } from "$lib/api/quiz";
 	import { user } from "$lib/stores/auth";
 
-	const queryResult = useQuiz(Number($page.params.quiz));
+	const query = useQuiz(Number($page.params.quiz));
 </script>
 
-<h1>Welcome {$user.username} {JSON.stringify($queryResult.data)}</h1>
+<h1>Welcome {$user.username} {JSON.stringify($query.data)}</h1>
 
 <style lang="scss">
 </style>

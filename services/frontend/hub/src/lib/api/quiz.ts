@@ -1,5 +1,5 @@
-import { useQuery } from "@sveltestack/svelte-query";
-import { ENDPOINTS, axiosInstance } from "./api";
+import { createQuery } from "@tanstack/svelte-query";
+import { ENDPOINTS, ServerResponseError, axiosInstance } from "./api";
 
 export interface Quiz {
 	id: number;
@@ -31,8 +31,18 @@ export async function createQuiz(title: string): Promise<Quiz> {
 }
 
 export function useQuiz(id: number) {
-	return useQuery(["quiz", id], async () => {
-		const { data } = await axiosInstance.get(ENDPOINTS.quiz.specific(id).root, {});
-		return data as Quiz;
+	return createQuery({
+		queryKey: ["quiz", id],
+		queryFn: async () => {
+			const { data } = await axiosInstance.get(ENDPOINTS.quiz.specific(id).root, {});
+			return data as Quiz;
+		},
+		retry(_failureCount, error) {
+			if (error instanceof ServerResponseError && [403, 404].includes(error.status)) {
+				return false;
+			}
+
+			return true;
+		}
 	});
 }
