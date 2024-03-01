@@ -8,19 +8,24 @@ use super::error::HttpError;
 pub enum QuizError {
     /// No matching Quiz found
     #[error("Quiz not found")]
-    QuizNotFound,
+    NotFound,
+    /// No permission to access
+    #[error("Missing permission")]
+    MissingPermission,
 }
 
 impl HttpError for QuizError {
     fn name(&self) -> &'static str {
         match self {
-            QuizError::QuizNotFound => "auth:email_not_found",
+            QuizError::NotFound => "quiz:not_found",
+            QuizError::MissingPermission => "quiz:missing_permission",
         }
     }
 
     fn status_code(&self) -> StatusCode {
         match self {
-            QuizError::QuizNotFound => StatusCode::NOT_FOUND,
+            QuizError::NotFound => StatusCode::NOT_FOUND,
+            QuizError::MissingPermission => StatusCode::FORBIDDEN,
         }
     }
 }

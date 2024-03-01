@@ -41,7 +41,11 @@ async fn get_quiz(
     // Create the new quiz
     let quiz = Quiz::find_by_id(&db, id)
         .await?
-        .ok_or(QuizError::QuizNotFound)?;
+        .ok_or(QuizError::NotFound)?;
+
+    if !quiz.owner.eq(&user.id) {
+        return Err(QuizError::MissingPermission.into());
+    }
 
     Ok(Json(quiz))
 }
