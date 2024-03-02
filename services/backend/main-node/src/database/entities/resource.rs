@@ -60,7 +60,6 @@ impl ActiveModelBehavior for ActiveModel {
         C: ConnectionTrait,
     {
         let now = Utc::now().naive_utc();
-        self.updated_at = Set(now);
 
         if insert {
             self.created_at = Set(now);
