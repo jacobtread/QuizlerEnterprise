@@ -28,6 +28,7 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(Resources::Path).string().not_null())
                     .col(ColumnDef::new(Resources::Owner).integer().not_null())
                     .col(ColumnDef::new(Resources::Visibility).integer().not_null())
+                    .col(ColumnDef::new(Resources::CreatedAt).date_time().not_null())
                     // Cascade deletions from the users table onto this table
                     .foreign_key(
                         ForeignKey::create()
@@ -65,4 +66,6 @@ enum Resources {
     Owner,
     /// Public, Private
     Visibility,
+    /// When the resource was created
+    CreatedAt,
 }
