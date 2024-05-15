@@ -1,8 +1,6 @@
 use crate::database::DbResult;
-use crate::services::auth::AuthProvider;
 use chrono::Utc;
 use sea_orm::entity::prelude::*;
-use sea_orm::ActiveValue::NotSet;
 use sea_orm::{ActiveValue::Set, ConnectionTrait};
 use serde::{Deserialize, Serialize};
 use serde_json::Map;

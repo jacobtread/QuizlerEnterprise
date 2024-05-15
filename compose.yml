@@ -7,20 +7,21 @@ services:
       - 4317:4317
       - 4318:4318
   # Database
-  database: 
+  database:
     image: timescale/timescaledb:latest-pg16
-    ports: 
+    ports:
       - 5432:5432
     env_file: .env
     volumes:
       - ./data/postgresql:/var/lib/postgresql/data
+
   # Main api node
-  main-node:
-    image: quizler/main-node
-    build: services/main-node
+  # main-node:
+  # image: quizler/main-node
+  # build: services/main-node
   # SMTP Mailing service
   mail:
-    image: 'mailhog/mailhog'
+    image: "mailhog/mailhog"
     ports:
       # SMTP
       - 1025:1025
