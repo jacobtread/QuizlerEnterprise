@@ -36,12 +36,16 @@
 
 <CaptchaContext />
 
-<main class="main">
-	<div class="content">
-		<div class="panel">
-			<form on:submit|preventDefault={submit} class="form">
-				<h1 class="title">Login</h1>
-				<p class="text">Enter your details below</p>
+<main
+	class="main bg-[url('/background-waves.svg')] bg-no-repeat bg-center bg-cover w-screen h-screen"
+>
+	<div class="flex flex-row items-center justify-center w-full h-full max-w-7xl mx-auto">
+		<div
+			class="max-w-md w-full bg-white border-gray-300 border-2 p-8 flex flex-col justify-center rounded-sm gap-4"
+		>
+			<form on:submit|preventDefault={submit} class="flex flex-col gap-1">
+				<h1 class="mb-4 text-3xl font-semibold text-gray-800">Login</h1>
+				<p class="text-gray-600 mb-2">Enter your details below</p>
 
 				{#if $errors["base"]}
 					<p class="input-error">{$errors["base"]}</p>
@@ -67,11 +71,17 @@
 					bind:value={$data.password}
 				/>
 
-				<a href="/" class="forgot">Forgot password?</a>
+				<a href="/" class="mb-2 text-sm text-blue-800">Forgot password?</a>
 
-				<button class="button">Login</button>
+				<button
+					class="button block px-3 py-2 bg-blue-600 border-none text-white font-bold text-lg cursor-pointer"
+				>
+					Login
+				</button>
 
-				<a href="{base}/auth/register" class="switch">Don't have an account? Register</a>
+				<a href="{base}/auth/register" class="mb-2 mt-2 text-sm text-blue-800">
+					Don't have an account? Register
+				</a>
 			</form>
 			<div>
 				<p class="text">Or login with an alternative method below</p>
@@ -79,9 +89,11 @@
 				<AuthProviders buttonPrefix="Sign-in" />
 			</div>
 		</div>
-		<div class="logo-wrapper">
-			<Logo textFill="#ffffff" bgFill="#666" class="logo" />
-			<p class="tagline">Powerful Quizzes without the extra hassle</p>
+		<div class="flex items-center justify-center flex-auto flex-col">
+			<Logo textFill="#ffffff" bgFill="#666" class="w-[320px] h-auto" />
+			<p class="mt-4 pt-4 rounded-lg bg-white text-gray-500">
+				Powerful Quizzes without the extra hassle
+			</p>
 		</div>
 	</div>
 </main>
@@ -89,106 +101,3 @@
 {#if $loading}
 	<Loader />
 {/if}
-
-<style lang="scss">
-	.main {
-		background: no-repeat url("/background-waves.svg");
-		background-position: center;
-		background-size: cover;
-		width: 100vw;
-		height: 100vh;
-	}
-
-	.logo-wrapper :global(.logo) {
-		width: 320px;
-		height: auto;
-	}
-
-	.button {
-		display: block;
-		padding: 0.75rem 0.5rem;
-		background-color: #0464e8;
-		border: none;
-		border-radius: 0.2rem;
-		color: #fff;
-		font-weight: bold;
-		font-size: 1.2rem;
-		cursor: pointer;
-	}
-
-	.forgot,
-	.switch {
-		margin-bottom: 0.5rem;
-		font-size: 0.9rem;
-		color: #426391;
-	}
-
-	.switch {
-		margin-top: 0.5rem;
-	}
-
-	.form {
-		display: flex;
-		flex-flow: column;
-		gap: 0.25rem;
-	}
-
-	.content {
-		width: 100%;
-		height: 100%;
-
-		max-width: 84rem;
-		margin: 0 auto;
-
-		display: flex;
-		flex-flow: row;
-
-		justify-content: center;
-		align-items: center;
-	}
-
-	.tagline {
-		margin-top: 1rem;
-		color: #999;
-		padding: 1rem;
-		border-radius: 0.5rem;
-		background-color: #ffffff;
-	}
-
-	.logo-wrapper {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		flex: auto;
-		flex-flow: column;
-	}
-
-	.panel {
-		max-width: 28rem;
-		width: 100%;
-		background: #fff;
-
-		border: 1px solid #ccc;
-
-		padding: 2rem;
-		display: flex;
-		flex-flow: column;
-		justify-content: center;
-
-		border-radius: 0.2rem;
-
-		gap: 1rem;
-	}
-
-	.title {
-		margin-bottom: 1rem;
-		font-size: 2rem;
-		font-weight: 600;
-		color: #444;
-	}
-
-	.text {
-		color: #555;
-		margin-bottom: 0.5rem;
-	}
-</style>

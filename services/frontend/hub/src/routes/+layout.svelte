@@ -1,5 +1,6 @@
 <script lang="ts">
 	import "$lib/assets/global.scss";
+	import "../app.css";
 	import "@fontsource-variable/inter";
 
 	import { QueryClient, QueryClientProvider } from "@tanstack/svelte-query";

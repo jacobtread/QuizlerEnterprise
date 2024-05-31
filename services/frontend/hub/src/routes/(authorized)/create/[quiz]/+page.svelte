@@ -7,6 +7,3 @@
 </script>
 
 <h1>Welcome {$user.username} {JSON.stringify($query.data)}</h1>
-
-<style lang="scss">
-</style>
